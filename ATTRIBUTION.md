@@ -23,6 +23,20 @@ logic. Sources, licenses, and how they are used are recorded here.
   saturation curves, two-handing Strength bonus (`floor(str × 1.5)`), unmet-
   requirement penalty, and per-damage-type scaling.
 
+## Modifier data (talismans / physick / buffs)
+
+- **File:** `src/engine/modifiers/modifiers-data.ts`
+- **Provenance:** A curated, hand-entered set of common AR-relevant modifiers
+  (flat attribute bonuses and percentage attack-power boosts) for vanilla patch
+  1.14, with values cross-checked against the community knowledge base
+  (Fextralife wiki and the community calculator spreadsheets). Each entry carries
+  a `source` field. The Fextralife wiki is **not** scraped — values are
+  transcribed by hand and the set is deliberately small and extensible.
+- **Stacking model:** Effects are combined as **additive within a stacking
+  group, multiplicative across groups** — the standard Elden Ring rule — by
+  `src/engine/modifiers/applyModifiers.ts`. Conditional/skill-only multipliers
+  are intentionally omitted so AR numbers stay honest for ordinary attacks.
+
 ## Cross-reference only (not data sources)
 
 The following were consulted to cross-check formula correctness. No code or data

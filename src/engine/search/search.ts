@@ -1,9 +1,9 @@
 import { AttackPowerType, type Attribute } from "../data/schema.ts";
 import { affinityName } from "../data/affinities.ts";
 import { weaponTypeName, catalystWeaponTypes } from "../calc/weaponTypes.ts";
-import { getWeaponAttack } from "../calc/getWeaponAttack.ts";
 import { getCalcWeapons } from "../calc/weapons.ts";
 import type { Attributes, CalcWeapon } from "../calc/types.ts";
+import { getModifiedWeaponAttack, type Modifier } from "../modifiers/applyModifiers.ts";
 import { scoreResult, sumDamage, isSpellObjective, type SearchObjective } from "./objectives.ts";
 import type { BuildStyle } from "./styles.ts";
 
@@ -27,6 +27,8 @@ export interface RankOptions {
   /** Upgrade level to evaluate. "max" uses each weapon's own cap (+25 or +10). Default "max". */
   upgradeLevel?: number | "max";
   filter?: RankFilter;
+  /** Talismans / physick tears / buffs to apply on top of base AR. Default none. */
+  modifiers?: readonly Modifier[];
   /** Max results to return (default 25). */
   limit?: number;
 }
@@ -77,6 +79,7 @@ export function passesFilter(
 export function rankWeapons(options: RankOptions): RankedWeapon[] {
   const { attributes, objective, twoHanding = false, upgradeLevel = "max", limit = 25 } = options;
   const filter = options.filter ?? {};
+  const modifiers = options.modifiers ?? [];
 
   const results: RankedWeapon[] = [];
 
@@ -88,7 +91,7 @@ export function rankWeapons(options: RankOptions): RankedWeapon[] {
         ? weapon.maxUpgradeLevel
         : Math.min(upgradeLevel, weapon.maxUpgradeLevel);
 
-    const attack = getWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level });
+    const attack = getModifiedWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level, modifiers });
     const requirementsMet = attack.ineffectiveAttributes.length === 0;
     if (filter.requireRequirementsMet && !requirementsMet) continue;
 

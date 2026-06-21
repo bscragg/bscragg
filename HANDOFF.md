@@ -22,7 +22,7 @@ values or target defenses in the data).
 
 ```bash
 npm install
-npm test           # vitest — 44 tests, the correctness bar
+npm test           # vitest — 77 tests, the correctness bar
 npm run typecheck
 npm run build      # static build -> dist/
 npm run dev        # local dev server
@@ -45,10 +45,17 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    (objective is additively separable across attributes), proven against brute
    force. `optimizeWeaponStats` (one weapon) and `optimizeAcrossWeapons` (ranked).
    UI has a "Rank" mode and an "Optimize" mode.
-5. ⏳ **Modifiers** — talismans + Wondrous Physick tears + buffs/greases with
-   correct additive-vs-multiplicative stacking. **NEXT PHASE.**
+5. ✅ **Modifiers** (`src/engine/modifiers/`) — talismans + Wondrous Physick
+   tears + buffs with **additive-within-group, multiplicative-across-groups**
+   stacking. Flat attribute bonuses (e.g. +5 STR heirlooms) feed into scaling
+   before the calc (clamped to 99); % effects apply per damage type after.
+   `getModifiedWeaponAttack` is a drop-in for `getWeaponAttack` (no modifiers ⇒
+   identical). Wired through `search` and `optimize` (DP stays exact — proven by
+   a modifier-aware brute-force test). Curated 16-modifier dataset in
+   `modifiers-data.ts` (attributed; deliberately small/extensible). UI has a
+   "Gear & buffs" picker feeding both modes. Spell-scaling buffs deferred.
 6. ⏳ **Inventory + UX polish** — owned-items multi-select/search, presets,
-   ranked trade-offs, mobile polish. (UI exists but is basic.)
+   ranked trade-offs, mobile polish. (UI exists but is basic.) **NEXT PHASE.**
 7. ⏳ **(Stretch) True DPS** — motion values + target defense. Data not present;
    would need a new source.
 
@@ -61,6 +68,7 @@ data/loadData ──> calc/preprocess (decode) ──> calc/getWeaponAttack (AR)
               search/styles        │
               search/search (rank) ┘
               optimize/optimizeStats (DP over separable per-attr gains)
+              modifiers/applyModifiers (getModifiedWeaponAttack wraps the calc)
 ```
 
 Key idea behind the optimizer: for a fixed weapon at requirements-met stats,
@@ -70,21 +78,27 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
 ## Resuming next time — suggested first message
 
 > "Resume EldenAR on branch claude/coding-session-werkha. Read HANDOFF.md, run
-> `npm test` to confirm green, then start Phase 5 (talisman/physick/buff
-> modifiers with correct stacking) as pure engine modules under
-> `src/engine/modifiers/` with tests, following the existing patterns."
+> `npm test` to confirm green, then start Phase 6 (Inventory + UX): owned-items
+> multi-select/search, sharable build presets, ranked trade-offs, and mobile
+> polish — following the existing patterns."
 
-## Phase 5 design notes (for the next session)
+## Phase 5 notes (done — reference for Phase 6 and beyond)
 
-- Model modifiers as ordered operations on an AR result. Most ER offensive
-  buffs are **additive multipliers within a group, multiplicative across
-  groups** (e.g. multiple flat attack-up talismans/physick/incantation buffs add
-  their percentages together, then that group multiplies the base). Verify the
-  exact stacking groups against community sources before locking — this is where
-  calculators get it wrong, so write tests per stacking rule.
-- Sources to pull effect values from (don't hardcode from memory): the
-  regulation `SpEffectParam` / the awesome-elden-ring index. The vendored JSON
-  has `statusSpEffectParams` but talisman/physick effect values are NOT in it yet
-  — a small additional data file will likely be needed; flag and source it.
-- Keep modifiers pure and toggleable; apply on top of `getWeaponAttack` output
-  and re-rank. Expose which buffs stack and which conflict.
+- Engine: `src/engine/modifiers/` — `applyModifiers.ts` (pure stacking math +
+  `getModifiedWeaponAttack`), `modifiers-data.ts` (curated dataset + lookups),
+  `index.ts` barrel. Stacking model is **additive within a `group`,
+  multiplicative across groups**; each modifier's `group` is just data, so
+  refining stacking accuracy later = editing data, not logic.
+- The dataset is a confident **starter set (16 entries)**, not the full
+  catalogue. Skill-only / conditional multipliers (e.g. Shard of Alexander) are
+  intentionally excluded so AR stays honest; conditional ones that ARE included
+  carry a `condition`/`drawback` note shown in the UI. Talisman/physick effect
+  values are still NOT in the vendored regulation JSON — they're hand-transcribed
+  here. Expanding the catalogue is the obvious next data task.
+- Known v1 simplifications to revisit: flat stat bonuses are clamped to 99 (the
+  curves are only evaluated to 148 = two-handed 99); spell-scaling buffs are not
+  applied (only `attackPower`); the optimizer computes requirement minimums on
+  raw requirements (a flat-stat bonus is never assumed to cover a requirement —
+  conservative). Same-category buffs that *overwrite* in game (FGMS vs Howl of
+  Shabriri) aren't both in the set, since "additive within group" can't express
+  "take the higher".

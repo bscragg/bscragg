@@ -6,9 +6,9 @@ import {
 } from "../data/schema.ts";
 import { affinityName } from "../data/affinities.ts";
 import { weaponTypeName } from "../calc/weaponTypes.ts";
-import { getWeaponAttack } from "../calc/getWeaponAttack.ts";
 import { getCalcWeapons } from "../calc/weapons.ts";
 import type { Attributes, CalcWeapon } from "../calc/types.ts";
+import { getModifiedWeaponAttack, type Modifier } from "../modifiers/applyModifiers.ts";
 import { scoreResult, sumDamage, type SearchObjective } from "../search/objectives.ts";
 import { passesFilter, type RankFilter } from "../search/search.ts";
 
@@ -41,6 +41,14 @@ export interface OptimizeStatsOptions {
   upgradeLevel?: number | "max";
   /** Force meeting the weapon's stat requirements (default true). */
   meetRequirements?: boolean;
+  /**
+   * Talismans / physick tears / buffs to apply while optimizing. Flat attribute
+   * bonuses and per-type % multipliers both preserve the objective's additive
+   * separability, so the DP stays exact. Requirement minimums are computed on the
+   * raw requirements (a flat-stat bonus is a conservative bonus, never assumed to
+   * cover a requirement). Default none.
+   */
+  modifiers?: readonly Modifier[];
 }
 
 export interface OptimizeStatsResult {
@@ -125,9 +133,10 @@ function scoreAttributes(
   twoHanding: boolean,
   level: number,
   objective: SearchObjective,
+  modifiers: readonly Modifier[],
 ): number {
   return scoreResult(
-    getWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level }),
+    getModifiedWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level, modifiers }),
     objective,
   );
 }
@@ -137,6 +146,7 @@ function scoreAttributes(
  */
 export function optimizeWeaponStats(options: OptimizeStatsOptions): OptimizeStatsResult {
   const { weapon, objective, budget, twoHanding = false, meetRequirements = true } = options;
+  const modifiers = options.modifiers ?? [];
   const level =
     options.upgradeLevel === undefined || options.upgradeLevel === "max"
       ? weapon.maxUpgradeLevel
@@ -147,14 +157,14 @@ export function optimizeWeaponStats(options: OptimizeStatsOptions): OptimizeStat
 
   // Infeasible: budget can't cover the forced minimums.
   if (minSum > budget.total) {
-    return finalize(weapon, mins, twoHanding, level, objective, false);
+    return finalize(weapon, mins, twoHanding, level, objective, modifiers, false);
   }
 
   const extra = budget.total - minSum;
 
   // Build per-attribute marginal-contribution tables relative to the minimum
   // spread (valid because the objective is separable in this region).
-  const baseScore = scoreAttributes(weapon, mins, twoHanding, level, objective);
+  const baseScore = scoreAttributes(weapon, mins, twoHanding, level, objective, modifiers);
 
   interface AttrTable {
     attr: Attribute;
@@ -169,7 +179,7 @@ export function optimizeWeaponStats(options: OptimizeStatsOptions): OptimizeStat
     let varies = false;
     for (let a = 1; a <= cap; a++) {
       const probe: Attributes = { ...mins, [attr]: mins[attr] + a };
-      const gain = scoreAttributes(weapon, probe, twoHanding, level, objective) - baseScore;
+      const gain = scoreAttributes(weapon, probe, twoHanding, level, objective, modifiers) - baseScore;
       delta.push(gain);
       if (gain > 1e-9) varies = true;
     }
@@ -187,7 +197,7 @@ export function optimizeWeaponStats(options: OptimizeStatsOptions): OptimizeStat
     used += add;
   }
 
-  return finalize(weapon, attributes, twoHanding, level, objective, true, minSum + used, budget.total);
+  return finalize(weapon, attributes, twoHanding, level, objective, modifiers, true, minSum + used, budget.total);
 }
 
 /** Exact DP over separable per-attribute gain tables. */
@@ -244,11 +254,12 @@ function finalize(
   twoHanding: boolean,
   level: number,
   objective: SearchObjective,
+  modifiers: readonly Modifier[],
   feasible: boolean,
   pointsUsed = allAttributes.reduce((s, a) => s + attributes[a], 0),
   budgetTotal = pointsUsed,
 ): OptimizeStatsResult {
-  const attack = getWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level });
+  const attack = getModifiedWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level, modifiers });
   return {
     attributes,
     score: scoreResult(attack, objective),
@@ -273,6 +284,8 @@ export interface OptimizeAcrossOptions {
   upgradeLevel?: number | "max";
   meetRequirements?: boolean;
   filter?: RankFilter;
+  /** Talismans / physick tears / buffs to apply while optimizing. Default none. */
+  modifiers?: readonly Modifier[];
   limit?: number;
 }
 
@@ -307,6 +320,7 @@ export function optimizeAcrossWeapons(options: OptimizeAcrossOptions): Optimized
       twoHanding,
       upgradeLevel: options.upgradeLevel,
       meetRequirements,
+      modifiers: options.modifiers,
     });
     if (!result.feasible || result.score <= 0) continue;
     if (filter.requireRequirementsMet && !result.requirementsMet) continue;

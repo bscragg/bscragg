@@ -7,6 +7,12 @@ import { buildStyles, getStyle } from "../engine/search/styles.ts";
 import { objectiveLabel } from "../engine/search/objectives.ts";
 import { rankWeaponsForStyle } from "../engine/search/search.ts";
 import { optimizeAcrossWeapons, type OptimizedWeapon } from "../engine/optimize/optimizeStats.ts";
+import {
+  getModifiers,
+  modifiersByKind,
+  type Modifier,
+  type ModifierKind,
+} from "../engine/modifiers/index.ts";
 
 const ATTR_LABELS: Record<Attribute, string> = {
   str: "STR",
@@ -49,21 +55,25 @@ export function App() {
   const [requireReqs, setRequireReqs] = useState(false);
   const [includeDlc, setIncludeDlc] = useState(true);
   const [budget, setBudget] = useState(150);
+  const [modifierIds, setModifierIds] = useState<string[]>([]);
   const [optimized, setOptimized] = useState<OptimizedWeapon[] | null>(null);
   const [optimizing, setOptimizing] = useState(false);
 
   const style = getStyle(styleId)!;
   const isSpell = style.objective.kind === "spellScaling";
 
+  const modifiers = useMemo(() => getModifiers(modifierIds), [modifierIds]);
+
   const ranked = useMemo(
     () =>
       rankWeaponsForStyle(style, {
         attributes,
         twoHanding,
+        modifiers,
         filter: { requireRequirementsMet: requireReqs, includeDlc },
         limit: 25,
       }),
-    [style, attributes, twoHanding, requireReqs, includeDlc],
+    [style, attributes, twoHanding, modifiers, requireReqs, includeDlc],
   );
 
   function runOptimize() {
@@ -75,6 +85,7 @@ export function App() {
         budget: { total: budget },
         twoHanding,
         meetRequirements: true,
+        modifiers,
         filter: {
           affinities: style.affinities,
           weaponTypes: style.weaponTypes,
@@ -193,6 +204,8 @@ export function App() {
             Include DLC
           </label>
         </div>
+
+        <ModifierPicker selected={modifierIds} onChange={setModifierIds} />
       </section>
 
       {mode === "rank" ? (
@@ -208,6 +221,83 @@ export function App() {
         </p>
       </footer>
     </main>
+  );
+}
+
+const MODIFIER_GROUPS: { kind: ModifierKind; label: string }[] = [
+  { kind: "talisman", label: "Talismans" },
+  { kind: "physick", label: "Wondrous Physick" },
+  { kind: "buff", label: "Buffs" },
+];
+
+function modifierNote(m: Modifier): string {
+  const parts: string[] = [];
+  if (m.attributeBonuses) {
+    parts.push(
+      Object.entries(m.attributeBonuses)
+        .map(([a, n]) => `${n > 0 ? "+" : ""}${n} ${a.toUpperCase()}`)
+        .join(", "),
+    );
+  }
+  for (const mult of m.multipliers ?? []) {
+    parts.push(`+${Math.round(mult.amount * 100)}%`);
+  }
+  if (m.condition) parts.push(m.condition);
+  if (m.drawback) parts.push(`⚠ ${m.drawback}`);
+  return parts.join(" · ");
+}
+
+function ModifierPicker({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const set = new Set(selected);
+  function toggle(id: string) {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    onChange([...next]);
+  }
+  return (
+    <details className="gear" open={selected.length > 0}>
+      <summary>
+        Gear &amp; buffs{" "}
+        {selected.length > 0 ? (
+          <span className="gear-count">{selected.length} active</span>
+        ) : (
+          <span className="hint">— talismans, physick tears, incantations</span>
+        )}
+      </summary>
+      <p className="hint">
+        Flat stat bonuses feed into scaling; % effects stack additively within a group and
+        multiplicatively across groups. Applies to both ranking and optimizing.
+      </p>
+      <div className="gear-groups">
+        {MODIFIER_GROUPS.map(({ kind, label }) => (
+          <div key={kind} className="gear-group">
+            <h3>{label}</h3>
+            {modifiersByKind(kind).map((m) => (
+              <label key={m.id} className="mod" title={m.source}>
+                <input type="checkbox" checked={set.has(m.id)} onChange={() => toggle(m.id)} />
+                <span className="mod-name">
+                  {m.name}
+                  {m.dlc && <span className="mod-dlc"> DLC</span>}
+                  <span className="mod-note"> {modifierNote(m)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+      {selected.length > 0 && (
+        <button className="gear-clear" onClick={() => onChange([])}>
+          Clear all
+        </button>
+      )}
+    </details>
   );
 }
 

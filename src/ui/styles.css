@@ -120,6 +120,76 @@ input[type="number"] {
   font-size: 0.95rem;
 }
 
+.gear {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}
+
+.gear > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--gold);
+  list-style: revert;
+}
+
+.gear-count {
+  color: var(--warn);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.gear-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.gear-group h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mod {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  padding: 0.2rem 0;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.mod input {
+  margin-top: 0.2rem;
+}
+
+.mod-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.mod-note {
+  color: var(--dim);
+  font-size: 0.78rem;
+}
+
+.mod-dlc {
+  color: var(--warn);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.gear-clear {
+  margin-top: 0.75rem;
+  background: transparent;
+  color: var(--dim);
+  border: 1px solid var(--line);
+}
+
 .budgetrow {
   display: flex;
   flex-wrap: wrap;
