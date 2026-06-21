@@ -1,0 +1,181 @@
+:root {
+  color-scheme: dark;
+  --bg: #14110c;
+  --panel: #1f1a12;
+  --line: #3a3122;
+  --text: #e9e0cf;
+  --dim: #a99e87;
+  --gold: #c9a85c;
+  --warn: #e0b341;
+  --unmet: #6b5d3f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  line-height: 1.45;
+}
+
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1 {
+  color: var(--gold);
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+.tagline {
+  margin: 0.25rem 0 1rem;
+  color: var(--dim);
+}
+
+.warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-width: 420px;
+}
+
+.field > span {
+  font-weight: 600;
+  color: var(--gold);
+}
+
+select,
+input[type="number"] {
+  background: #110d08;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.hint {
+  color: var(--dim);
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+}
+
+.attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.attr {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: 72px;
+}
+
+.attr > span {
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+
+.attr input {
+  width: 100%;
+}
+
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: var(--dim);
+  font-size: 0.92rem;
+}
+
+h2 {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.tablewrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+
+th,
+td {
+  padding: 0.5rem 0.6rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  background: #2a2316;
+  color: var(--gold);
+  position: sticky;
+  top: 0;
+}
+
+tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.num {
+  text-align: right;
+}
+
+.strong {
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.dim {
+  color: var(--dim);
+}
+
+.wt {
+  color: var(--dim);
+  font-size: 0.82rem;
+}
+
+.flag {
+  color: var(--warn);
+}
+
+tr.unmet td {
+  color: var(--unmet);
+}
+
+footer {
+  margin-top: 2rem;
+  color: var(--dim);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.75rem;
+}

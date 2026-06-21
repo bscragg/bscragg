@@ -49,8 +49,8 @@ pinned to **vanilla patch 1.14** (post Shadow of the Erdtree). See
 ## Build phases
 
 1. ✅ **Data layer** — load + validate the extracted dataset; document schema; pin patch.
-2. ⏳ **AR engine + tests** — verified against reference calculators.
-3. ⏳ **Weapon search** — rank owned weapons/affinities by objective.
+2. ✅ **AR engine + tests** — verified against reference calculators.
+3. ✅ **Weapon search** — playstyle presets + rank weapons/affinities by objective (total AR, damage type, status buildup, spell scaling), with owned-items / DLC / requirement filters. Includes a basic interactive UI.
 4. ⏳ **Stat optimizer** — optimal attribute spread within a level budget.
 5. ⏳ **Modifiers** — talismans + physick + buffs with correct stacking.
 6. ⏳ **Inventory + UX** — owned-items filtering, ranked trade-offs, mobile UI.
