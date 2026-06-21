@@ -50,7 +50,11 @@ export interface RankedWeapon {
   ineffectiveAttributes: Attribute[];
 }
 
-function passesFilter(weapon: CalcWeapon, objective: SearchObjective, filter: RankFilter): boolean {
+export function passesFilter(
+  weapon: CalcWeapon,
+  objective: SearchObjective,
+  filter: RankFilter,
+): boolean {
   if (filter.includeDlc === false && weapon.dlc) return false;
   if (filter.ownedWeaponNames && !filter.ownedWeaponNames.includes(weapon.name)) return false;
   if (filter.affinities && !filter.affinities.includes(weapon.affinityId)) return false;
