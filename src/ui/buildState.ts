@@ -18,6 +18,8 @@ export interface BuildState {
   upgrade: number;
   /** Catalyst Spell Buff (sorcery/incant scaling) for weapon-buff spells. */
   spellBuff: number;
+  /** Collapse results to the best affinity per base weapon. */
+  bestPerWeapon: boolean;
   modifierIds: string[];
   ownedBaseNames: string[];
 }
@@ -32,6 +34,7 @@ export const DEFAULT_STATE: BuildState = {
   budget: 150,
   upgrade: 25,
   spellBuff: 250,
+  bestPerWeapon: false,
   modifierIds: [],
   ownedBaseNames: [],
 };
@@ -60,6 +63,7 @@ export function encodeState(s: BuildState): string {
   p.set("bg", String(s.budget));
   p.set("up", String(s.upgrade));
   p.set("sb", String(s.spellBuff));
+  if (s.bestPerWeapon) p.set("bpw", "1");
   for (const id of s.modifierIds) p.append("mod", id);
   for (const n of s.ownedBaseNames) p.append("own", n);
   return p.toString();
@@ -102,6 +106,8 @@ export function decodeState(query: string): BuildState {
 
   const sb = p.get("sb");
   if (sb !== null && Number.isFinite(Number(sb))) s.spellBuff = clampSpellBuff(Number(sb));
+
+  s.bestPerWeapon = p.get("bpw") === "1";
 
   const mods = p.getAll("mod");
   if (mods.length) s.modifierIds = mods;

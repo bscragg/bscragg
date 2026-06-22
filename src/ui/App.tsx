@@ -59,6 +59,7 @@ export function App() {
   const [budget, setBudget] = useState(initial.budget);
   const [upgrade, setUpgrade] = useState(initial.upgrade);
   const [spellBuff, setSpellBuff] = useState(initial.spellBuff);
+  const [bestPerWeapon, setBestPerWeapon] = useState(initial.bestPerWeapon);
   const [modifierIds, setModifierIds] = useState<string[]>(initial.modifierIds);
   const [ownedBaseNames, setOwnedBaseNames] = useState<string[]>(initial.ownedBaseNames);
   const [optimized, setOptimized] = useState<OptimizedWeapon[] | null>(null);
@@ -85,10 +86,11 @@ export function App() {
       budget,
       upgrade,
       spellBuff,
+      bestPerWeapon,
       modifierIds,
       ownedBaseNames,
     });
-  }, [styleId, mode, attributes, twoHanding, requireReqs, includeDlc, budget, upgrade, spellBuff, modifierIds, ownedBaseNames]);
+  }, [styleId, mode, attributes, twoHanding, requireReqs, includeDlc, budget, upgrade, spellBuff, bestPerWeapon, modifierIds, ownedBaseNames]);
 
   const ranked = useMemo(
     () =>
@@ -97,6 +99,7 @@ export function App() {
         twoHanding,
         upgradeLevel: upgrade,
         modifiers,
+        bestPerWeapon,
         filter: {
           requireRequirementsMet: requireReqs,
           includeDlc,
@@ -104,7 +107,7 @@ export function App() {
         },
         limit: 25,
       }),
-    [style, attributes, twoHanding, upgrade, modifiers, requireReqs, includeDlc, ownedFilter],
+    [style, attributes, twoHanding, upgrade, modifiers, bestPerWeapon, requireReqs, includeDlc, ownedFilter],
   );
 
   function runOptimize() {
@@ -118,6 +121,7 @@ export function App() {
         upgradeLevel: upgrade,
         meetRequirements: true,
         modifiers,
+        bestPerWeapon,
         filter: {
           affinities: style.affinities,
           weaponTypes: style.weaponTypes,
@@ -141,6 +145,7 @@ export function App() {
     setBudget(DEFAULT_STATE.budget);
     setUpgrade(DEFAULT_STATE.upgrade);
     setSpellBuff(DEFAULT_STATE.spellBuff);
+    setBestPerWeapon(DEFAULT_STATE.bestPerWeapon);
     setModifierIds([]);
     setOwnedBaseNames([]);
     setOptimized(null);
@@ -260,6 +265,14 @@ export function App() {
             <input type="checkbox" checked={includeDlc} onChange={(e) => setIncludeDlc(e.target.checked)} />{" "}
             Include DLC
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={bestPerWeapon}
+              onChange={(e) => setBestPerWeapon(e.target.checked)}
+            />{" "}
+            Best affinity per weapon
+          </label>
           <label className="upgrade">
             <span>Upgrade +</span>
             <input
@@ -296,6 +309,7 @@ export function App() {
             budget,
             upgrade,
             spellBuff,
+            bestPerWeapon,
             modifierIds,
             ownedBaseNames,
           })}
@@ -576,6 +590,7 @@ function RankTable({
   rows: ReturnType<typeof rankWeaponsForStyle>;
   isSpell: boolean;
 }) {
+  const top = rows[0]?.score ?? 0;
   return (
     <section>
       <h2>
@@ -603,7 +618,10 @@ function RankTable({
                   {!r.requirementsMet && <span className="flag" title="Requirements not met"> ⚠</span>}
                 </td>
                 <td>{r.affinityName}</td>
-                <td className="num strong">{Math.round(r.score)}</td>
+                <td className="num strong">
+                  {Math.round(r.score)}
+                  <DeltaTag score={r.score} top={top} />
+                </td>
                 {!isSpell && DAMAGE_LABELS.map(([t]) => <td key={t} className="num dim">{fmt(r.attackPower[t])}</td>)}
                 {!isSpell && STATUS_LABELS.map(([t]) => <td key={t} className="num dim">{fmt(r.attackPower[t])}</td>)}
               </tr>
@@ -627,6 +645,7 @@ function OptimizeTable({
 }) {
   if (optimizing) return <p className="hint">Optimizing across weapons…</p>;
   if (rows === null) return <p className="hint">Set a point budget and press “Find best builds”.</p>;
+  const top = rows[0]?.score ?? 0;
   return (
     <section>
       <h2>Top {rows.length} optimized builds</h2>
@@ -638,6 +657,7 @@ function OptimizeTable({
               <th>Weapon</th>
               <th>Affinity</th>
               <th className="num">{isSpell ? "Spell" : "Score"}</th>
+              <th className="num" title="Score per offensive attribute point used">AR/pt</th>
               {allAttributes.map((a) => (
                 <th key={a} className="num">{ATTR_LABELS[a]}</th>
               ))}
@@ -652,7 +672,13 @@ function OptimizeTable({
                   <span className="wt"> · {r.weaponTypeName}</span>
                 </td>
                 <td>{r.affinityName}</td>
-                <td className="num strong">{Math.round(r.score)}</td>
+                <td className="num strong">
+                  {Math.round(r.score)}
+                  <DeltaTag score={r.score} top={top} />
+                </td>
+                <td className="num dim">
+                  {r.pointsUsed > 0 ? (r.score / r.pointsUsed).toFixed(1) : "—"}
+                </td>
                 {allAttributes.map((a) => (
                   <td key={a} className="num dim">{r.attributes[a]}</td>
                 ))}
@@ -668,4 +694,12 @@ function OptimizeTable({
 
 function fmt(value: number | undefined): string {
   return value ? String(Math.round(value)) : "—";
+}
+
+/** "−X%" showing how far a row's score is below the #1 result. Null for the leader. */
+function DeltaTag({ score, top }: { score: number; top: number }) {
+  if (!top || score >= top) return null;
+  const pct = (1 - score / top) * 100;
+  if (pct < 0.05) return null;
+  return <span className="delta"> −{pct < 10 ? pct.toFixed(1) : String(Math.round(pct))}%</span>;
 }

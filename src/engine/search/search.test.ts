@@ -29,6 +29,31 @@ describe("rankWeapons", () => {
     }
   });
 
+  it("bestPerWeapon collapses to one (highest-scoring) affinity per base weapon", () => {
+    const all = rankWeapons({
+      attributes: attrs(60, 60, 60, 60, 60),
+      objective: { kind: "totalAr" },
+      limit: 50,
+    });
+    const best = rankWeapons({
+      attributes: attrs(60, 60, 60, 60, 60),
+      objective: { kind: "totalAr" },
+      bestPerWeapon: true,
+      limit: 50,
+    });
+    // No base weapon repeats.
+    const names = best.map((r) => r.weaponName);
+    expect(new Set(names).size).toBe(names.length);
+    // The kept row for a weapon is its best-scoring variant in the full list.
+    const firstName = best[0]!.weaponName;
+    const bestInAll = Math.max(
+      ...all.filter((r) => r.weaponName === firstName).map((r) => r.score),
+    );
+    expect(best[0]!.score).toBeCloseTo(bestInAll, 6);
+    // Collapsing yields no more rows than the unfiltered list.
+    expect(best.length).toBeLessThanOrEqual(all.length);
+  });
+
   it("score matches the objective and totalAr is the damage sum", () => {
     const list = rankWeapons({
       attributes: attrs(20, 30, 10, 10, 50),

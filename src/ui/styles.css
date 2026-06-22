@@ -350,6 +350,12 @@ input[type="number"] {
   font-weight: 600;
 }
 
+.delta {
+  color: var(--dim);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
 button {
   background: var(--accent);
   color: #06121b;

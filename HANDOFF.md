@@ -22,7 +22,7 @@ values or target defenses in the data).
 
 ```bash
 npm install
-npm test           # vitest — 111 tests, the correctness bar
+npm test           # vitest — 112 tests, the correctness bar
 npm run typecheck
 npm run build      # static build -> dist/
 npm run dev        # local dev server
@@ -68,9 +68,11 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    `resolveUpgradeLevel(weapon, upgrade)`; somber weapons mapped proportionally;
    per-weapon level shown as `+N` in the tables); shareable + persisted build
    state (`src/ui/buildState.ts` → URL hash + localStorage, "Copy share link" +
-   "Reset"); responsive/mobile layout. Pickers use internal open-state so they
-   don't collapse on re-render. **Still ⏳ within the phase:** ranked trade-off
-   insights (score delta from #1, AR-per-point, best-affinity rollup).
+   "Reset"); responsive/mobile layout; **trade-off insights** — score Δ from #1
+   shown inline (`DeltaTag`), AR-per-point column in optimize, and a "best
+   affinity per weapon" rollup (`RankOptions.bestPerWeapon` /
+   `OptimizeAcrossOptions.bestPerWeapon` → `dedupeByWeapon` before the limit).
+   Pickers use internal open-state so they don't collapse on re-render.
 7. ⏳ **(Stretch) True DPS** — motion values + target defense. Data not present;
    would need a new source.
 
@@ -95,11 +97,11 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
 ## Resuming next time — suggested first message
 
 > "Resume EldenAR on branch claude/coding-session-werkha. Read HANDOFF.md, run
-> `npm test` to confirm green (111 tests). Phases 1–6 are done. Either finish the
-> remaining Phase 6 trade-off insights (score delta from #1, AR-per-point,
-> best-affinity-per-weapon rollup in the results tables), derive the weapon-buff
-> Spell Buff from a chosen catalyst + stats (instead of a manual number), or
-> scope Phase 7 (true DPS — needs a new data source)."
+> `npm test` to confirm green (112 tests). Phases 1–6 are fully done. Options:
+> derive the weapon-buff Spell Buff from a chosen catalyst + stats (instead of a
+> manual number); add a saved-builds list (named presets beyond the single URL
+> state); or scope Phase 7 (true DPS — needs a new data source for motion values
+> & target defense)."
 
 ## Phase 5 notes (done — reference for Phase 6 and beyond)
 

@@ -10,7 +10,7 @@ import { getCalcWeapons, resolveUpgradeLevel } from "../calc/weapons.ts";
 import type { Attributes, CalcWeapon } from "../calc/types.ts";
 import { getModifiedWeaponAttack, type Modifier } from "../modifiers/applyModifiers.ts";
 import { scoreResult, sumDamage, type SearchObjective } from "../search/objectives.ts";
-import { passesFilter, type RankFilter } from "../search/search.ts";
+import { dedupeByWeapon, passesFilter, type RankFilter } from "../search/search.ts";
 
 /**
  * Stat optimizer. Given a point budget for the five offensive attributes, find
@@ -283,6 +283,8 @@ export interface OptimizeAcrossOptions {
   filter?: RankFilter;
   /** Talismans / physick tears / buffs to apply while optimizing. Default none. */
   modifiers?: readonly Modifier[];
+  /** Collapse to the single best affinity per base weapon before the limit. Default false. */
+  bestPerWeapon?: boolean;
   limit?: number;
 }
 
@@ -338,5 +340,6 @@ export function optimizeAcrossWeapons(options: OptimizeAcrossOptions): Optimized
   }
 
   out.sort((a, b) => b.score - a.score);
-  return out.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
+  const rows = options.bestPerWeapon ? dedupeByWeapon(out) : out;
+  return rows.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
 }

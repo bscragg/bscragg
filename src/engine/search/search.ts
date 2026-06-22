@@ -39,6 +39,12 @@ export interface RankOptions {
   filter?: RankFilter;
   /** Talismans / physick tears / buffs to apply on top of base AR. Default none. */
   modifiers?: readonly Modifier[];
+  /**
+   * Collapse to the single best affinity per base weapon before applying the
+   * limit, so the list is N distinct weapons rather than many affinities of a
+   * few. Default false.
+   */
+  bestPerWeapon?: boolean;
   /** Max results to return (default 25). */
   limit?: number;
 }
@@ -131,7 +137,23 @@ export function rankWeapons(options: RankOptions): RankedWeapon[] {
   }
 
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
+  const rows = options.bestPerWeapon ? dedupeByWeapon(results) : results;
+  return rows.slice(0, limit).map((r, i) => ({ ...r, rank: i + 1 }));
+}
+
+/**
+ * Keep only the first row per base weapon name. With rows pre-sorted by score
+ * (descending), that first row is the best affinity for each weapon.
+ */
+export function dedupeByWeapon<T extends { weaponName: string }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows) {
+    if (seen.has(row.weaponName)) continue;
+    seen.add(row.weaponName);
+    out.push(row);
+  }
+  return out;
 }
 
 /**

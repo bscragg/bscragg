@@ -11,6 +11,7 @@ const sample: BuildState = {
   budget: 200,
   upgrade: 18,
   spellBuff: 310,
+  bestPerWeapon: true,
   modifierIds: ["golden-vow", "flame-grant-me-strength"],
   ownedBaseNames: ["Longsword", "Rivers of Blood", "Marais Executioner's Sword"],
 };
