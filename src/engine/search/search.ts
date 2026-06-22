@@ -10,6 +10,12 @@ import type { BuildStyle } from "./styles.ts";
 export interface RankFilter {
   /** If set, only these weapons (matched by full `name`) are considered — "items I own". */
   ownedWeaponNames?: string[];
+  /**
+   * If set, only weapons whose base name (`weaponName`) is in this list are
+   * considered — an inventory expressed per base weapon. Owning an infusable
+   * base implicitly includes all its affinity variants. Empty means no filter.
+   */
+  ownedWeaponBaseNames?: string[];
   /** If set, restrict to these affinity ids. */
   affinities?: number[];
   /** If set, restrict to these weapon-type ids. */
@@ -59,6 +65,13 @@ export function passesFilter(
 ): boolean {
   if (filter.includeDlc === false && weapon.dlc) return false;
   if (filter.ownedWeaponNames && !filter.ownedWeaponNames.includes(weapon.name)) return false;
+  if (
+    filter.ownedWeaponBaseNames &&
+    filter.ownedWeaponBaseNames.length > 0 &&
+    !filter.ownedWeaponBaseNames.includes(weapon.weaponName)
+  ) {
+    return false;
+  }
   if (filter.affinities && !filter.affinities.includes(weapon.affinityId)) return false;
   if (filter.weaponTypes && !filter.weaponTypes.includes(weapon.weaponType)) return false;
 

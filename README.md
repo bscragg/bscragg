@@ -53,5 +53,5 @@ pinned to **vanilla patch 1.14** (post Shadow of the Erdtree). See
 3. ✅ **Weapon search** — playstyle presets + rank weapons/affinities by objective (total AR, damage type, status buildup, spell scaling), with owned-items / DLC / requirement filters. Includes a basic interactive UI.
 4. ✅ **Stat optimizer** — exact per-weapon DP that finds the optimal attribute spread within a point budget (separable objective ⇒ resource-allocation DP, proven against brute force). UI "Optimize" mode included.
 5. ✅ **Modifiers** — talismans + physick + buffs with correct stacking (flat attribute bonuses feed into scaling; % effects stack additively within a group, multiplicatively across groups). Wired into rank & optimize; selectable in the UI. Spell-scaling buffs deferred.
-6. ⏳ **Inventory + UX** — owned-items filtering, ranked trade-offs, mobile UI.
+6. ✅ **Inventory + UX** — owned-items inventory (searchable multi-select by base weapon; owning an infusable weapon unlocks all its affinities), shareable/persisted build state (URL hash + localStorage, "Copy share link"), and responsive/mobile layout. Ranked trade-off insights still ⏳.
 7. ⏳ **(Stretch) True DPS** — motion values + target defense.

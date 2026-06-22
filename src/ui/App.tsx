@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { REGULATION_PATCH } from "../engine/data/loadData.ts";
 import { PATCH_LABEL } from "../engine/data/patch.ts";
 import { allAttributes, AttackPowerType, type Attribute } from "../engine/data/schema.ts";
+import { listBaseWeapons } from "../engine/calc/weapons.ts";
 import type { Attributes } from "../engine/calc/types.ts";
 import { buildStyles, getStyle } from "../engine/search/styles.ts";
 import { objectiveLabel } from "../engine/search/objectives.ts";
@@ -13,6 +14,12 @@ import {
   type Modifier,
   type ModifierKind,
 } from "../engine/modifiers/index.ts";
+import {
+  DEFAULT_STATE,
+  loadInitialState,
+  persistState,
+  shareUrl,
+} from "./buildState.ts";
 
 const ATTR_LABELS: Record<Attribute, string> = {
   str: "STR",
@@ -42,27 +49,39 @@ const STATUS_LABELS: [AttackPowerType, string][] = [
 type Mode = "rank" | "optimize";
 
 export function App() {
-  const [styleId, setStyleId] = useState("open");
-  const [mode, setMode] = useState<Mode>("rank");
-  const [attributes, setAttributes] = useState<Attributes>({
-    str: 60,
-    dex: 60,
-    int: 20,
-    fai: 20,
-    arc: 20,
-  });
-  const [twoHanding, setTwoHanding] = useState(false);
-  const [requireReqs, setRequireReqs] = useState(false);
-  const [includeDlc, setIncludeDlc] = useState(true);
-  const [budget, setBudget] = useState(150);
-  const [modifierIds, setModifierIds] = useState<string[]>([]);
+  const [initial] = useState(loadInitialState);
+  const [styleId, setStyleId] = useState(initial.styleId);
+  const [mode, setMode] = useState<Mode>(initial.mode);
+  const [attributes, setAttributes] = useState<Attributes>(initial.attributes);
+  const [twoHanding, setTwoHanding] = useState(initial.twoHanding);
+  const [requireReqs, setRequireReqs] = useState(initial.requireReqs);
+  const [includeDlc, setIncludeDlc] = useState(initial.includeDlc);
+  const [budget, setBudget] = useState(initial.budget);
+  const [modifierIds, setModifierIds] = useState<string[]>(initial.modifierIds);
+  const [ownedBaseNames, setOwnedBaseNames] = useState<string[]>(initial.ownedBaseNames);
   const [optimized, setOptimized] = useState<OptimizedWeapon[] | null>(null);
   const [optimizing, setOptimizing] = useState(false);
 
-  const style = getStyle(styleId)!;
+  const style = getStyle(styleId) ?? getStyle("open")!;
   const isSpell = style.objective.kind === "spellScaling";
 
   const modifiers = useMemo(() => getModifiers(modifierIds), [modifierIds]);
+  const ownedFilter = ownedBaseNames.length > 0 ? ownedBaseNames : undefined;
+
+  // Remember the build across reloads and keep the URL shareable.
+  useEffect(() => {
+    persistState({
+      styleId,
+      mode,
+      attributes,
+      twoHanding,
+      requireReqs,
+      includeDlc,
+      budget,
+      modifierIds,
+      ownedBaseNames,
+    });
+  }, [styleId, mode, attributes, twoHanding, requireReqs, includeDlc, budget, modifierIds, ownedBaseNames]);
 
   const ranked = useMemo(
     () =>
@@ -70,10 +89,14 @@ export function App() {
         attributes,
         twoHanding,
         modifiers,
-        filter: { requireRequirementsMet: requireReqs, includeDlc },
+        filter: {
+          requireRequirementsMet: requireReqs,
+          includeDlc,
+          ownedWeaponBaseNames: ownedFilter,
+        },
         limit: 25,
       }),
-    [style, attributes, twoHanding, modifiers, requireReqs, includeDlc],
+    [style, attributes, twoHanding, modifiers, requireReqs, includeDlc, ownedFilter],
   );
 
   function runOptimize() {
@@ -90,12 +113,26 @@ export function App() {
           affinities: style.affinities,
           weaponTypes: style.weaponTypes,
           includeDlc,
+          ownedWeaponBaseNames: ownedFilter,
         },
         limit: 25,
       });
       setOptimized(result);
       setOptimizing(false);
     }, 20);
+  }
+
+  function resetAll() {
+    setStyleId(DEFAULT_STATE.styleId);
+    setMode(DEFAULT_STATE.mode);
+    setAttributes({ ...DEFAULT_STATE.attributes });
+    setTwoHanding(DEFAULT_STATE.twoHanding);
+    setRequireReqs(DEFAULT_STATE.requireReqs);
+    setIncludeDlc(DEFAULT_STATE.includeDlc);
+    setBudget(DEFAULT_STATE.budget);
+    setModifierIds([]);
+    setOwnedBaseNames([]);
+    setOptimized(null);
   }
 
   return (
@@ -205,7 +242,24 @@ export function App() {
           </label>
         </div>
 
+        <InventoryPicker selected={ownedBaseNames} onChange={setOwnedBaseNames} />
+
         <ModifierPicker selected={modifierIds} onChange={setModifierIds} />
+
+        <BuildToolbar
+          getState={() => ({
+            styleId,
+            mode,
+            attributes,
+            twoHanding,
+            requireReqs,
+            includeDlc,
+            budget,
+            modifierIds,
+            ownedBaseNames,
+          })}
+          onReset={resetAll}
+        />
       </section>
 
       {mode === "rank" ? (
@@ -254,6 +308,7 @@ function ModifierPicker({
   selected: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const [open, setOpen] = useState(selected.length > 0);
   const set = new Set(selected);
   function toggle(id: string) {
     const next = new Set(set);
@@ -262,7 +317,7 @@ function ModifierPicker({
     onChange([...next]);
   }
   return (
-    <details className="gear" open={selected.length > 0}>
+    <details className="gear" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
       <summary>
         Gear &amp; buffs{" "}
         {selected.length > 0 ? (
@@ -298,6 +353,128 @@ function ModifierPicker({
         </button>
       )}
     </details>
+  );
+}
+
+const INVENTORY_LIMIT = 80;
+
+function InventoryPicker({
+  selected,
+  onChange,
+}: {
+  selected: string[];
+  onChange: (names: string[]) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(selected.length > 0);
+  const all = useMemo(() => listBaseWeapons(), []);
+  const set = new Set(selected);
+  const q = query.trim().toLowerCase();
+
+  const filtered = useMemo(() => {
+    const list = q ? all.filter((w) => w.weaponName.toLowerCase().includes(q)) : all;
+    return { total: list.length, shown: list.slice(0, INVENTORY_LIMIT) };
+  }, [all, q]);
+
+  function toggle(name: string) {
+    const next = new Set(set);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    onChange([...next]);
+  }
+
+  return (
+    <details className="inv" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>
+        My weapons{" "}
+        {selected.length > 0 ? (
+          <span className="gear-count">{selected.length} owned</span>
+        ) : (
+          <span className="hint">— rank only weapons in your inventory</span>
+        )}
+      </summary>
+      <p className="hint">
+        With at least one weapon selected, ranking &amp; optimizing only consider your inventory.
+        Owning an infusable weapon includes all its affinities.
+      </p>
+
+      {selected.length > 0 && (
+        <div className="chips">
+          {[...selected].sort((a, b) => a.localeCompare(b)).map((n) => (
+            <button key={n} className="chip" onClick={() => toggle(n)} title="Remove">
+              {n} ✕
+            </button>
+          ))}
+          <button className="gear-clear" onClick={() => onChange([])}>
+            Clear all
+          </button>
+        </div>
+      )}
+
+      <input
+        className="inv-search"
+        type="search"
+        placeholder="Search weapons by name…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <div className="inv-list">
+        {filtered.shown.map((w) => (
+          <label key={w.weaponName} className="mod">
+            <input
+              type="checkbox"
+              checked={set.has(w.weaponName)}
+              onChange={() => toggle(w.weaponName)}
+            />
+            <span className="mod-name">
+              {w.weaponName}
+              <span className="mod-note">
+                {" "}
+                {w.weaponTypeName}
+                {w.affinityCount > 1 ? ` · ${w.affinityCount} affinities` : ""}
+                {w.dlc ? " · DLC" : ""}
+              </span>
+            </span>
+          </label>
+        ))}
+        {filtered.shown.length === 0 && <p className="hint">No weapons match “{query}”.</p>}
+      </div>
+      {filtered.total > filtered.shown.length && (
+        <p className="hint">
+          Showing {filtered.shown.length} of {filtered.total} — keep typing to narrow.
+        </p>
+      )}
+    </details>
+  );
+}
+
+function BuildToolbar({
+  getState,
+  onReset,
+}: {
+  getState: () => Parameters<typeof shareUrl>[0];
+  onReset: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function copyLink() {
+    const url = shareUrl(getState());
+    // Best-effort copy; the same URL is always live in the address bar, so give
+    // feedback immediately rather than waiting on a clipboard promise that may
+    // hang when the page isn't focused.
+    navigator.clipboard?.writeText?.(url)?.catch(() => {});
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
+  return (
+    <div className="toolbar">
+      <button onClick={copyLink}>{copied ? "Link copied ✓" : "Copy share link"}</button>
+      <button className="gear-clear" onClick={onReset}>
+        Reset
+      </button>
+      <span className="hint">Your build is saved automatically and encoded in the page URL.</span>
+    </div>
   );
 }
 

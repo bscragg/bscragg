@@ -22,7 +22,7 @@ values or target defenses in the data).
 
 ```bash
 npm install
-npm test           # vitest — 77 tests, the correctness bar
+npm test           # vitest — 89 tests, the correctness bar
 npm run typecheck
 npm run build      # static build -> dist/
 npm run dev        # local dev server
@@ -54,8 +54,14 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    a modifier-aware brute-force test). Curated 16-modifier dataset in
    `modifiers-data.ts` (attributed; deliberately small/extensible). UI has a
    "Gear & buffs" picker feeding both modes. Spell-scaling buffs deferred.
-6. ⏳ **Inventory + UX polish** — owned-items multi-select/search, presets,
-   ranked trade-offs, mobile polish. (UI exists but is basic.) **NEXT PHASE.**
+6. ✅ **Inventory + UX** — owned-items inventory (searchable multi-select by
+   base weapon via `listBaseWeapons()` + `RankFilter.ownedWeaponBaseNames`;
+   owning an infusable base unlocks all its affinities, somber/unique = 1
+   variant); shareable + persisted build state (`src/ui/buildState.ts` →
+   URL hash + localStorage, "Copy share link" + "Reset"); responsive/mobile
+   layout (`@media (max-width: 640px)`). Pickers use internal open-state so
+   they don't collapse on re-render. **Still ⏳ within the phase:** ranked
+   trade-off insights (score delta from #1, AR-per-point, best-affinity rollup).
 7. ⏳ **(Stretch) True DPS** — motion values + target defense. Data not present;
    would need a new source.
 
@@ -69,6 +75,8 @@ data/loadData ──> calc/preprocess (decode) ──> calc/getWeaponAttack (AR)
               search/search (rank) ┘
               optimize/optimizeStats (DP over separable per-attr gains)
               modifiers/applyModifiers (getModifiedWeaponAttack wraps the calc)
+
+ui/App.tsx ──> ui/buildState.ts (encode/decode build <-> URL hash + localStorage)
 ```
 
 Key idea behind the optimizer: for a fixed weapon at requirements-met stats,
@@ -78,9 +86,10 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
 ## Resuming next time — suggested first message
 
 > "Resume EldenAR on branch claude/coding-session-werkha. Read HANDOFF.md, run
-> `npm test` to confirm green, then start Phase 6 (Inventory + UX): owned-items
-> multi-select/search, sharable build presets, ranked trade-offs, and mobile
-> polish — following the existing patterns."
+> `npm test` to confirm green (89 tests). Phases 1–6 are done. Either finish the
+> remaining Phase 6 trade-off insights (score delta from #1, AR-per-point,
+> best-affinity-per-weapon rollup in the results tables), expand the modifier
+> catalogue, or scope Phase 7 (true DPS — needs a new data source)."
 
 ## Phase 5 notes (done — reference for Phase 6 and beyond)
 
