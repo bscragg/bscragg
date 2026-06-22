@@ -5,6 +5,7 @@ import { getWeaponAttack } from "../calc/getWeaponAttack.ts";
 import type { Attributes } from "../calc/types.ts";
 import {
   applyAttributeBonuses,
+  applyFlatDamage,
   applyResultMultipliers,
   computeTypeMultipliers,
   getModifiedWeaponAttack,
@@ -37,6 +38,14 @@ const pct = (group: string, amount: number, types?: AttackPowerType[]): Modifier
   name: group,
   kind: "buff",
   multipliers: [{ group, amount, types }],
+  source: "test",
+});
+
+const grease = (type: AttackPowerType, amount: number): Modifier => ({
+  id: `grease:${type}:${amount}`,
+  name: "grease",
+  kind: "grease",
+  flatDamage: { [type]: amount },
   source: "test",
 });
 
@@ -130,6 +139,55 @@ describe("applyResultMultipliers", () => {
   it("does not mutate the input result", () => {
     applyResultMultipliers(base, [pct("a", 0.5, [PHYS])]);
     expect(base.attackPower[PHYS]).toBe(100);
+  });
+});
+
+describe("applyFlatDamage", () => {
+  const base = {
+    upgradeLevel: 25,
+    attackPower: { [PHYS]: 100 },
+    spellScaling: {},
+    ineffectiveAttributes: [],
+    ineffectiveAttackPowerTypes: [],
+  };
+
+  it("adds to an existing type", () => {
+    const out = applyFlatDamage(base, [grease(PHYS, 50)]);
+    expect(out.attackPower[PHYS]).toBe(150);
+  });
+
+  it("introduces a type the weapon didn't have", () => {
+    const out = applyFlatDamage(base, [grease(FIRE, 85)]);
+    expect(out.attackPower[FIRE]).toBe(85);
+    expect(out.attackPower[PHYS]).toBe(100); // unchanged
+  });
+
+  it("sums multiple flat adds to the same type", () => {
+    const out = applyFlatDamage(base, [grease(FIRE, 85), grease(FIRE, 110)]);
+    expect(out.attackPower[FIRE]).toBe(195);
+  });
+
+  it("returns the same object when nothing applies, and never mutates input", () => {
+    expect(applyFlatDamage(base, [flatStr(5)])).toBe(base);
+    applyFlatDamage(base, [grease(PHYS, 50)]);
+    expect(base.attackPower[PHYS]).toBe(100);
+  });
+});
+
+describe("getModifiedWeaponAttack — flat then multiplier order", () => {
+  it("applies multipliers to the flat-augmented total: (base + flat) × mult", () => {
+    const weapon = findWeapon("Longsword")!; // pure physical, no innate fire
+    const level = weapon.maxUpgradeLevel;
+    const opts = { weapon, attributes: attrs(50, 50), upgradeLevel: level };
+    const basePhys = getWeaponAttack(opts).attackPower[PHYS]!;
+
+    const out = getModifiedWeaponAttack({
+      ...opts,
+      modifiers: [grease(FIRE, 85), pct("buff", 0.15)], // +85 fire, then +15% all
+    });
+    // Fire: (0 + 85) × 1.15;  Physical: base × 1.15
+    expect(out.attackPower[FIRE]).toBeCloseTo(85 * 1.15, 6);
+    expect(out.attackPower[PHYS]).toBeCloseTo(basePhys * 1.15, 6);
   });
 });
 

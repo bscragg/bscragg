@@ -9,14 +9,18 @@ import { getWeaponAttack, type WeaponAttackOptions } from "../calc/getWeaponAtta
 /**
  * Phase 5 — modifier stacking.
  *
- * Talismans, Wondrous Physick tears, and buffs (incantations/sorceries) layer
- * on top of a weapon's base Attack Rating in two distinct ways:
+ * Talismans, Wondrous Physick tears, greases, and buffs layer on top of a
+ * weapon's base Attack Rating in three distinct ways, applied in this order:
  *
  *   1. **Flat attribute bonuses** (e.g. Starscourge Heirloom +5 STR) change the
- *      character's stats, so they feed *into* scaling. They are applied to the
- *      attribute spread *before* the AR calc.
- *   2. **Percentage AR multipliers** (e.g. Golden Vow +15%) apply *after* the
- *      calc, per damage type.
+ *      character's stats, so they feed *into* scaling — applied to the attribute
+ *      spread *before* the AR calc.
+ *   2. **Flat damage adds** (e.g. Fire Grease +85 fire) add a fixed amount to a
+ *      damage/status type *after* the calc — and may introduce a type the weapon
+ *      didn't have.
+ *   3. **Percentage AR multipliers** (e.g. Golden Vow +15%) apply *last*, per
+ *      type, to the flat-augmented total. So a greased weapon's added damage is
+ *      itself amplified by attack-up buffs: AR(t) = (base(t) + flat(t)) × mult(t).
  *
  * The multiplier stacking model follows Elden Ring's buff rules: **only the
  * strongest effect in a group applies (same-category buffs are mutually
@@ -39,7 +43,7 @@ import { getWeaponAttack, type WeaponAttackOptions } from "../calc/getWeaponAtta
 /** The hard attribute cap; also the bound the soft-cap curves are evaluated to. */
 const ATTR_CAP = 99;
 
-export type ModifierKind = "talisman" | "physick" | "buff";
+export type ModifierKind = "talisman" | "physick" | "buff" | "grease";
 
 export interface ModifierMultiplier {
   /**
@@ -67,6 +71,13 @@ export interface Modifier {
   kind: ModifierKind;
   /** Flat attribute bonuses applied before scaling (e.g. `{ str: 5 }`). */
   attributeBonuses?: Partial<Attributes>;
+  /**
+   * Flat damage added per attack-power type (e.g. `{ [FIRE]: 85 }` for Fire
+   * Grease), applied after the calc but before multipliers. May introduce a type
+   * the weapon didn't have. Fixed constants only — used for greases, whose adds
+   * don't scale with the weapon or the player's stats.
+   */
+  flatDamage?: Partial<Record<AttackPowerType, number>>;
   /** Percentage AR effects, applied after the calc. */
   multipliers?: readonly ModifierMultiplier[];
   /** Activation caveat that the user must satisfy, e.g. "while HP is at maximum". */
@@ -139,6 +150,31 @@ export function computeTypeMultipliers(
 }
 
 /**
+ * Add modifiers' flat damage onto an attack result, returning a new result.
+ * Unlike multipliers, a flat add can introduce a type the weapon didn't deal
+ * (e.g. Fire Grease on a purely-physical weapon). Greases are mutually exclusive
+ * in game (one armament buff at a time) — that's enforced at selection time; if
+ * multiple are passed here they simply sum.
+ */
+export function applyFlatDamage(
+  result: WeaponAttackResult,
+  modifiers: readonly Modifier[],
+): WeaponAttackResult {
+  let any = false;
+  const attackPower = { ...result.attackPower };
+  for (const modifier of modifiers) {
+    if (!modifier.flatDamage) continue;
+    for (const [key, amount] of Object.entries(modifier.flatDamage)) {
+      if (!amount) continue;
+      const type = Number(key) as AttackPowerType;
+      attackPower[type] = (attackPower[type] ?? 0) + amount;
+      any = true;
+    }
+  }
+  return any ? { ...result, attackPower } : result;
+}
+
+/**
  * Apply post-calc percentage multipliers to an attack result, returning a new
  * result. Only types the weapon actually deals are scaled — a multiplier for a
  * type the weapon has no attack power in is a no-op (it never fabricates damage).
@@ -164,9 +200,10 @@ export interface ModifiedWeaponAttackOptions extends WeaponAttackOptions {
 }
 
 /**
- * Attack Rating with modifiers applied: flat attribute bonuses feed into scaling
- * before the calc, and percentage multipliers are applied after, per damage
- * type, using the additive-within-group / multiplicative-across-groups model.
+ * Attack Rating with modifiers applied, in order: flat attribute bonuses feed
+ * into scaling before the calc; flat damage adds are applied after the calc;
+ * then percentage multipliers scale the flat-augmented total per type
+ * (strongest-within-group, multiplicative across groups).
  *
  * With no modifiers this is exactly `getWeaponAttack`, so it can be dropped in
  * anywhere the base calc is used without changing existing behaviour.
@@ -178,5 +215,6 @@ export function getModifiedWeaponAttack({
   if (modifiers.length === 0) return getWeaponAttack(options);
   const attributes = applyAttributeBonuses(options.attributes, modifiers);
   const base = getWeaponAttack({ ...options, attributes });
-  return applyResultMultipliers(base, modifiers);
+  const withFlat = applyFlatDamage(base, modifiers);
+  return applyResultMultipliers(withFlat, modifiers);
 }

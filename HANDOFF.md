@@ -22,7 +22,7 @@ values or target defenses in the data).
 
 ```bash
 npm install
-npm test           # vitest — 93 tests, the correctness bar
+npm test           # vitest — 102 tests, the correctness bar
 npm run typecheck
 npm run build      # static build -> dist/
 npm run dev        # local dev server
@@ -46,17 +46,19 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    force. `optimizeWeaponStats` (one weapon) and `optimizeAcrossWeapons` (ranked).
    UI has a "Rank" mode and an "Optimize" mode.
 5. ✅ **Modifiers** (`src/engine/modifiers/`) — talismans + Wondrous Physick
-   tears + buffs. Stacking: **strongest-applies within a group, multiplicative
-   across groups** (matches ER: same-category buffs are mutually exclusive and
-   overwrite; different categories multiply). Flat attribute bonuses (e.g. +5 STR
-   heirlooms, +10 stat-knot tears) feed into scaling before the calc (clamped to
-   99); % effects apply per damage type after. `getModifiedWeaponAttack` is a
-   drop-in for `getWeaponAttack` (no modifiers ⇒ identical). Wired through
-   `search` and `optimize` (DP stays exact — proven by a modifier-aware brute
-   force). **32-entry sourced dataset** (`modifiers-data.ts`) covering everything
-   the model represents faithfully. UI "Gear & buffs" picker feeds both modes.
-   Out of scope (need a flat-elemental mechanic): weapon-buff spells & greases,
-   on-hit ramps, charged/skill/move-specific talismans, spell-scaling buffs.
+   tears + buffs + greases. Three effect kinds combine as
+   **`AR(t) = (base(t) + flat(t)) × mult(t)`**: flat attribute bonuses (e.g. +5
+   STR heirlooms, +10 stat-knot tears) feed scaling before the calc (clamped to
+   99); greases add **fixed flat damage** after the calc (`applyFlatDamage`); %
+   buffs apply last, **strongest-within-group / multiplicative-across-groups**
+   (ER mutual-exclusivity). `getModifiedWeaponAttack` is a drop-in for
+   `getWeaponAttack` (no modifiers ⇒ identical). Wired through `search` and
+   `optimize` (DP stays exact — flat adds are per-type constants). **45-entry
+   sourced dataset** (`modifiers-data.ts`). UI "Gear & buffs" picker feeds both
+   modes; greases are single-select (one Armament buff at a time).
+   Out of scope: **weapon-buff spells** (Scholar's Armament, Bloodflame Blade, …)
+   — elemental add scales with the catalyst, not a fixed constant; on-hit ramps;
+   charged/skill/move-specific talismans; spell-scaling buffs.
 6. ✅ **Inventory + UX** — owned-items inventory (searchable multi-select by
    base weapon via `listBaseWeapons()` + `RankFilter.ownedWeaponBaseNames`;
    owning an infusable base unlocks all its affinities, somber/unique = 1
@@ -103,14 +105,18 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
   per group, then multiplies group factors). Mutually-exclusive in-game pairs
   share a group (the two Golden Vows; FGMS / Howl of Shabriri); everything else
   gets its own group. Each modifier's `group` is just data.
-- The dataset is **32 entries**, cross-checked against Fextralife (every entry
-  has a `source`), covering everything the model can represent. Values are
-  hand-transcribed (talisman/physick effects are NOT in the regulation JSON).
+- The dataset is **45 entries** (incl. 13 greases), cross-checked against
+  Fextralife (every entry has a `source`), covering everything the model can
+  represent. Values are hand-transcribed (talisman/physick/grease effects are
+  NOT in the regulation JSON).
 - Known v1 simplifications to revisit: flat stat bonuses are clamped to 99 (the
   curves are only evaluated to 148 = two-handed 99); spell-scaling buffs are not
   applied (only `attackPower`); the optimizer computes requirement minimums on
-  raw requirements (a flat-stat bonus is never assumed to cover a requirement —
-  conservative). **To go further** the engine needs a third effect kind —
-  flat-elemental-add — for weapon-buff spells (Bloodflame Blade, Scholar's
-  Armament, …) and greases, plus on-hit-ramp / charged-attack handling. Those
-  are deliberately excluded today (documented in `modifiers-data.ts`).
+  raw requirements (conservative). **To go further** the remaining gap is
+  weapon-buff *spells* (Scholar's Armament, Bloodflame Blade, Electrify Armament,
+  Order's Blade): their elemental add scales with the catalyst's spell/incant
+  scaling, so it'd need a scaling-aware effect (not a constant). The grease
+  flat-add path (`applyFlatDamage`) is the natural place to extend. Also still
+  out: on-hit ramps and charged/skill/move-specific talismans. The calculator
+  doesn't enforce that greases need a physical-affinity weapon (documented in
+  `modifiers-data.ts`).

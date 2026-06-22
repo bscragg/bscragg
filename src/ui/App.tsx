@@ -291,7 +291,13 @@ const MODIFIER_GROUPS: { kind: ModifierKind; label: string }[] = [
   { kind: "talisman", label: "Talismans" },
   { kind: "physick", label: "Wondrous Physick" },
   { kind: "buff", label: "Buffs" },
+  { kind: "grease", label: "Greases (one at a time)" },
 ];
+
+const TYPE_LABEL: Partial<Record<AttackPowerType, string>> = Object.fromEntries([
+  ...DAMAGE_LABELS,
+  ...STATUS_LABELS,
+]);
 
 function modifierNote(m: Modifier): string {
   const parts: string[] = [];
@@ -299,6 +305,13 @@ function modifierNote(m: Modifier): string {
     parts.push(
       Object.entries(m.attributeBonuses)
         .map(([a, n]) => `${n > 0 ? "+" : ""}${n} ${a.toUpperCase()}`)
+        .join(", "),
+    );
+  }
+  if (m.flatDamage) {
+    parts.push(
+      Object.entries(m.flatDamage)
+        .map(([t, n]) => `+${n} ${TYPE_LABEL[Number(t) as AttackPowerType] ?? ""}`.trim())
         .join(", "),
     );
   }
@@ -320,10 +333,16 @@ function ModifierPicker({
 }) {
   const [open, setOpen] = useState(selected.length > 0);
   const set = new Set(selected);
+  // Greases share the "Armament" buff category — only one can be active.
+  const greaseIds = new Set(modifiersByKind("grease").map((m) => m.id));
   function toggle(id: string) {
     const next = new Set(set);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      if (greaseIds.has(id)) for (const g of greaseIds) next.delete(g);
+      next.add(id);
+    }
     onChange([...next]);
   }
   return (

@@ -24,11 +24,12 @@ describe("modifier dataset integrity", () => {
     for (const m of MODIFIERS) expect(m.source.length).toBeGreaterThan(0);
   });
 
-  it("every modifier does something (a bonus or a multiplier)", () => {
+  it("every modifier does something (a bonus, flat damage, or a multiplier)", () => {
     for (const m of MODIFIERS) {
       const hasBonus = m.attributeBonuses && Object.keys(m.attributeBonuses).length > 0;
+      const hasFlat = m.flatDamage && Object.keys(m.flatDamage).length > 0;
       const hasMult = m.multipliers && m.multipliers.length > 0;
-      expect(hasBonus || hasMult).toBe(true);
+      expect(hasBonus || hasFlat || hasMult).toBe(true);
     }
   });
 
@@ -41,10 +42,19 @@ describe("modifier dataset integrity", () => {
     }
   });
 
-  it("covers all three kinds", () => {
+  it("covers all four kinds", () => {
     expect(modifiersByKind("talisman").length).toBeGreaterThan(0);
     expect(modifiersByKind("physick").length).toBeGreaterThan(0);
     expect(modifiersByKind("buff").length).toBeGreaterThan(0);
+    expect(modifiersByKind("grease").length).toBeGreaterThan(0);
+  });
+
+  it("greases carry flat damage and no scaling effects", () => {
+    for (const m of modifiersByKind("grease")) {
+      expect(m.flatDamage && Object.keys(m.flatDamage).length).toBeTruthy();
+      expect(m.attributeBonuses).toBeUndefined();
+      expect(m.multipliers).toBeUndefined();
+    }
   });
 });
 
@@ -149,5 +159,35 @@ describe("expanded catalogue — stacking specifics", () => {
       expect(m).toBeTruthy();
       expect(m!.dlc).toBeUndefined();
     }
+  });
+
+  it("Fire Grease adds +85 flat fire to a purely-physical weapon", () => {
+    const fire = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: getModifiers(["fire-grease"]),
+    }).attackPower[AttackPowerType.FIRE];
+    expect(fire).toBeCloseTo(85, 6);
+  });
+
+  it("a grease's added type is then amplified by an attack-up multiplier", () => {
+    const fire = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: getModifiers(["fire-grease", "golden-vow"]),
+    }).attackPower[AttackPowerType.FIRE];
+    expect(fire).toBeCloseTo(85 * 1.15, 4);
+  });
+
+  it("Blood Grease adds flat bleed buildup", () => {
+    const bleed = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: getModifiers(["blood-grease"]),
+    }).attackPower[AttackPowerType.BLEED];
+    expect(bleed).toBeCloseTo(30, 6);
   });
 });

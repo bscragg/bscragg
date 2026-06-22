@@ -6,21 +6,23 @@ import type { Modifier } from "./applyModifiers.ts";
  * affect Attack Rating, for vanilla patch 1.14 (post Shadow of the Erdtree).
  *
  * Values are hand-transcribed and cross-checked against the community wiki
- * (Fextralife); see ATTRIBUTION.md. This covers every modifier that the engine
- * can represent faithfully — i.e. **flat attribute bonuses** and **percentage
- * AR multipliers on normal attacks**.
+ * (Fextralife); see ATTRIBUTION.md. This covers every modifier the engine can
+ * represent faithfully — flat attribute bonuses, fixed flat damage adds
+ * (greases), and percentage AR multipliers on normal attacks.
  *
  * Stacking (enforced by `applyModifiers.ts`): within a `group` only the
  * strongest effect applies (same-category buffs overwrite in game); per-group
  * factors multiply. Mutually-exclusive in-game pairs share a group (e.g. the two
  * Golden Vows; Flame Grant Me Strength / Howl of Shabriri); everything else gets
- * its own group so it multiplies.
+ * its own group so it multiplies. Greases are the "Armament" category — only one
+ * is active at a time, enforced at selection (the UI makes them single-select).
  *
  * Deliberately NOT included, because the current model can't represent them
- * faithfully (PvE values are not simple per-type constants on a normal attack):
- *   - Weapon-buff spells that add flat elemental damage (Bloodflame Blade,
- *     Scholar's Armament, Black Flame Blade, Lightning/Electrify Armament, …)
- *     and all greases.
+ * faithfully:
+ *   - Weapon-buff SPELLS (Scholar's Armament, Bloodflame Blade, Black Flame
+ *     Blade, Electrify Armament, Order's Blade, …): their elemental add SCALES
+ *     with the catalyst's spell/incant scaling (≈ mult × scaling), so it is not
+ *     a fixed constant. Greases (below) are fixed, so they ARE included.
  *   - On-hit ramping effects (Winged Sword Insignia, Rotten Winged Sword
  *     Insignia, Millicent's Prosthesis, Thorny/Spiked cracked tears).
  *   - Charged- / skill- / move-specific talismans (Shard of Alexander,
@@ -28,6 +30,10 @@ import type { Modifier } from "./applyModifiers.ts";
  *     dash/kick/throwable/bow talismans).
  * Conditional effects that DO apply to normal attacks are included, with the
  * trigger noted in `condition`.
+ *
+ * Grease note: greases require a physical-affinity armament (Standard/Heavy/
+ * Keen/Quality) in game — they can't enchant an already-elemental weapon. The
+ * calculator doesn't enforce that; apply them to physical weapons.
  */
 
 const SRC = "Elden Ring community wiki (Fextralife), vanilla patch 1.14";
@@ -311,6 +317,115 @@ export const MODIFIERS: readonly Modifier[] = [
     multipliers: [{ group: "body-buff", amount: 0.25 }],
     condition: "incantation active, ~40s",
     drawback: "+30% damage taken; builds your own madness",
+    source: SRC,
+  },
+
+  // --- Greases (fixed flat damage; "Armament" buff — one at a time) ---------
+  // Standard elemental greases: +85 for 60s. Physical-affinity weapons only.
+  {
+    id: "fire-grease",
+    name: "Fire Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.FIRE]: 85 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "magic-grease",
+    name: "Magic Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.MAGIC]: 85 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "lightning-grease",
+    name: "Lightning Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.LIGHTNING]: 85 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "holy-grease",
+    name: "Holy Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.HOLY]: 85 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  // Drawstring elemental greases: +110 but only ~10s.
+  {
+    id: "drawstring-fire-grease",
+    name: "Drawstring Fire Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.FIRE]: 110 },
+    condition: "~10s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "drawstring-magic-grease",
+    name: "Drawstring Magic Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.MAGIC]: 110 },
+    condition: "~10s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "drawstring-lightning-grease",
+    name: "Drawstring Lightning Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.LIGHTNING]: 110 },
+    condition: "~10s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "drawstring-holy-grease",
+    name: "Drawstring Holy Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.HOLY]: 110 },
+    condition: "~10s; physical-affinity weapons only",
+    source: SRC,
+  },
+  // Status greases: add flat status buildup per hit, ~60s.
+  {
+    id: "blood-grease",
+    name: "Blood Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.BLEED]: 30 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "poison-grease",
+    name: "Poison Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.POISON]: 63 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "freezing-grease",
+    name: "Freezing Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.FROST]: 63 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "rot-grease",
+    name: "Rot Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.SCARLET_ROT]: 63 },
+    condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "soporific-grease",
+    name: "Soporific Grease",
+    kind: "grease",
+    flatDamage: { [AttackPowerType.SLEEP]: 33 },
+    condition: "~60s; physical-affinity weapons only",
     source: SRC,
   },
 ];

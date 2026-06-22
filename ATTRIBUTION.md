@@ -27,21 +27,27 @@ logic. Sources, licenses, and how they are used are recorded here.
 
 - **File:** `src/engine/modifiers/modifiers-data.ts`
 - **Provenance:** A hand-entered set of AR-relevant modifiers (flat attribute
-  bonuses and percentage attack-power boosts on normal attacks) for vanilla
-  patch 1.14, with values cross-checked against the community knowledge base
-  (Fextralife wiki). Each entry carries a `source` field. The wiki is **not**
-  scraped — values are transcribed by hand. It aims to cover every modifier the
-  engine can represent faithfully.
-- **Stacking model:** `src/engine/modifiers/applyModifiers.ts` combines effects
+  bonuses, fixed flat damage adds, and percentage attack-power boosts on normal
+  attacks) for vanilla patch 1.14, with values cross-checked against the
+  community knowledge base (Fextralife wiki). Each entry carries a `source`
+  field. The wiki is **not** scraped — values are transcribed by hand. It aims to
+  cover every modifier the engine can represent faithfully.
+- **Stacking / order of operations:** `src/engine/modifiers/applyModifiers.ts`
+  computes `AR(t) = (base(t) + flat(t)) × mult(t)` per type. Flat attribute
+  bonuses feed scaling first; greases add fixed flat damage; then % buffs apply
   as **strongest-applies within a stacking group, multiplicative across groups**
   — matching Elden Ring's buff rules, where same-category buffs (e.g. two body
   buffs, or Golden Vow incantation vs. its Ash of War) are mutually exclusive and
-  overwrite rather than stack, while different categories multiply.
+  overwrite rather than stack, while different categories multiply. Greases are
+  the single "Armament" category (one active at a time).
 - **Out of scope** (the model can't represent these faithfully, so they are
-  omitted by design): flat-elemental weapon buffs (Bloodflame Blade, Scholar's
-  Armament, …) and greases; on-hit ramping effects (Winged Sword Insignia,
-  Thorny/Spiked tears); and charged-/skill-/move-specific talismans (Shard of
-  Alexander, Godfrey Icon, Claw/Axe/etc.) that don't affect ordinary-attack AR.
+  omitted by design): **weapon-buff spells** (Bloodflame Blade, Scholar's
+  Armament, Electrify Armament, Order's Blade, …) — their elemental add *scales
+  with the catalyst's spell/incant scaling*, so it is not a fixed constant
+  (greases, which are fixed, ARE included); on-hit ramping effects (Winged Sword
+  Insignia, Thorny/Spiked tears); and charged-/skill-/move-specific talismans
+  (Shard of Alexander, Godfrey Icon, Claw/Axe/etc.) that don't affect
+  ordinary-attack AR.
 
 ## Cross-reference only (not data sources)
 
