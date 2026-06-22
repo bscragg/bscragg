@@ -47,10 +47,17 @@ logic. Sources, licenses, and how they are used are recorded here.
   dataset stores the `factor` and the app multiplies it by a user-supplied
   Spell Buff. Fixed status riders (e.g. Bloodflame's +40 bleed) are stored as
   flat damage.
+- **Armor** that raises general attack power on normal attacks (Rakshasa Set,
+  White Mask, Mushroom Crown, Black Dumpling, Twinbird Kite Shield) is included
+  as % multipliers. Slot-conflicting pieces share an `exclusiveGroup` so the UI
+  keeps them single-select. Rakshasa's "+damage taken" and Mushroom Crown's
+  alleged downside are community-confirmed non-effects and are not modelled.
 - **Out of scope** (the model can't represent these faithfully): on-hit ramping
   effects (Winged Sword Insignia, Thorny/Spiked tears) and charged-/skill-/
-  move-specific talismans (Shard of Alexander, Godfrey Icon, Claw/Axe/etc.) that
-  don't affect ordinary-attack AR; Black Flame Blade's %-HP damage-over-time.
+  move-specific talismans (Shard of Alexander, Godfrey Icon, Claw/Axe/etc.);
+  move-specific armor (Raptor's Black Feathers / Gravebird's = jump attacks,
+  Leda's = post-roll, Dancer's = dance skills) and spell-only armor (Snow Witch
+  Hat, Lusat's/Azur's/Crucible/Spellblade sets); Black Flame Blade's %-HP DoT.
 
 ## Cross-reference only (not data sources)
 

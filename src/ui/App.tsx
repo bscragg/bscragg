@@ -9,6 +9,7 @@ import { objectiveLabel } from "../engine/search/objectives.ts";
 import { rankWeaponsForStyle } from "../engine/search/search.ts";
 import { optimizeAcrossWeapons, type OptimizedWeapon } from "../engine/optimize/optimizeStats.ts";
 import {
+  MODIFIERS,
   resolveModifiers,
   modifiersByKind,
   type Modifier,
@@ -339,7 +340,27 @@ const MODIFIER_GROUPS: { kind: ModifierKind; label: string }[] = [
   { kind: "buff", label: "Buffs" },
   { kind: "weapon-buff", label: "Weapon buffs (armament)" },
   { kind: "grease", label: "Greases (armament)" },
+  { kind: "armor", label: "Armor" },
 ];
+
+/**
+ * The slot-exclusivity key for a modifier (UI single-select): an explicit
+ * `exclusiveGroup`, or "armament" for greases / weapon-buff spells (one armament
+ * buff at a time). Items sharing a key can't be worn together, so selecting one
+ * clears the others.
+ */
+function exclusiveKeyOf(m: Modifier): string | undefined {
+  if (m.exclusiveGroup) return m.exclusiveGroup;
+  if (m.kind === "grease" || m.kind === "weapon-buff") return "armament";
+  return undefined;
+}
+
+const EXCLUSIVE_BY_ID: Map<string, string> = new Map(
+  MODIFIERS.flatMap((m) => {
+    const key = exclusiveKeyOf(m);
+    return key ? [[m.id, key] as [string, string]] : [];
+  }),
+);
 
 const BASIS_LABEL = { sorcery: "Sorcery Scaling", incant: "Incant Scaling" } as const;
 
@@ -392,17 +413,15 @@ function ModifierPicker({
 }) {
   const [open, setOpen] = useState(selected.length > 0);
   const set = new Set(selected);
-  // Greases and weapon-buff spells are all the "Armament" category — only one
-  // can be active at a time, so selecting one clears the rest.
-  const armamentIds = new Set(
-    [...modifiersByKind("grease"), ...modifiersByKind("weapon-buff")].map((m) => m.id),
-  );
   function toggle(id: string) {
     const next = new Set(set);
     if (next.has(id)) {
       next.delete(id);
     } else {
-      if (armamentIds.has(id)) for (const g of armamentIds) next.delete(g);
+      // Selecting an item clears anything it can't be worn alongside (same
+      // slot / the single Armament buff), so those groups stay single-select.
+      const key = EXCLUSIVE_BY_ID.get(id);
+      if (key) for (const [otherId, otherKey] of EXCLUSIVE_BY_ID) if (otherKey === key) next.delete(otherId);
       next.add(id);
     }
     onChange([...next]);

@@ -49,12 +49,17 @@ describe("modifier dataset integrity", () => {
     }
   });
 
-  it("covers all five kinds", () => {
-    expect(modifiersByKind("talisman").length).toBeGreaterThan(0);
-    expect(modifiersByKind("physick").length).toBeGreaterThan(0);
-    expect(modifiersByKind("buff").length).toBeGreaterThan(0);
-    expect(modifiersByKind("grease").length).toBeGreaterThan(0);
-    expect(modifiersByKind("weapon-buff").length).toBeGreaterThan(0);
+  it("covers all six kinds", () => {
+    for (const kind of ["talisman", "physick", "buff", "grease", "weapon-buff", "armor"] as const) {
+      expect(modifiersByKind(kind).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("the helm-slot armor pieces share an exclusiveGroup (single-select)", () => {
+    const helms = modifiersByKind("armor").filter((m) => m.exclusiveGroup === "armor-helm");
+    expect(helms.map((m) => m.id)).toEqual(
+      expect.arrayContaining(["rakshasa-set", "white-mask", "mushroom-crown", "black-dumpling"]),
+    );
   });
 
   it("greases carry flat damage and no scaling effects", () => {
@@ -249,5 +254,34 @@ describe("weapon-buff spells — catalyst-scaling resolution", () => {
       modifiers: [...resolveModifiers(["electrify-armament"], 200), ...getModifiers(["golden-vow"])],
     }).attackPower[AttackPowerType.LIGHTNING];
     expect(fire).toBeCloseTo(0.75 * 200 * 1.15, 3);
+  });
+});
+
+describe("armor attack-power multipliers", () => {
+  const weapon = findWeapon("Longsword")!;
+  const level = weapon.maxUpgradeLevel;
+  const a = attrs(60, 60);
+  const basePhys = getWeaponAttack({ weapon, attributes: a, upgradeLevel: level }).attackPower[
+    AttackPowerType.PHYSICAL
+  ]!;
+
+  it("the Rakshasa Set raises all damage by 8%", () => {
+    const phys = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: getModifiers(["rakshasa-set"]),
+    }).attackPower[AttackPowerType.PHYSICAL]!;
+    expect(phys).toBeCloseTo(basePhys * 1.08, 4);
+  });
+
+  it("armor stacks multiplicatively with a buff (different sources)", () => {
+    const phys = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: getModifiers(["rakshasa-set", "golden-vow"]),
+    }).attackPower[AttackPowerType.PHYSICAL]!;
+    expect(phys).toBeCloseTo(basePhys * 1.08 * 1.15, 4);
   });
 });

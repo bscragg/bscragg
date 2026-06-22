@@ -22,7 +22,7 @@ values or target defenses in the data).
 
 ```bash
 npm install
-npm test           # vitest — 112 tests, the correctness bar
+npm test           # vitest — 115 tests, the correctness bar
 npm run typecheck
 npm run build      # static build -> dist/
 npm run dev        # local dev server
@@ -46,7 +46,7 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    force. `optimizeWeaponStats` (one weapon) and `optimizeAcrossWeapons` (ranked).
    UI has a "Rank" mode and an "Optimize" mode.
 5. ✅ **Modifiers** (`src/engine/modifiers/`) — talismans + Wondrous Physick
-   tears + buffs + greases + weapon-buff spells. Effects combine as
+   tears + buffs + greases + weapon-buff spells + attack-up armor. Combine as
    **`AR(t) = (base(t) + flat(t)) × mult(t)`**: flat attribute bonuses (+5
    heirlooms, +10 stat-knot tears) feed scaling before the calc (clamped to 99);
    greases add **fixed flat damage** + weapon-buff spells add **catalyst-scaling
@@ -56,11 +56,14 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    it into concrete `flatDamage` so the **pure engine only reads `flatDamage`**
    (no spellBuff threading through search/optimize). `getModifiedWeaponAttack` is
    a drop-in for `getWeaponAttack`. DP stays exact (flat adds are per-type
-   constants). **50-entry sourced dataset**. UI "Gear & buffs" picker feeds both
-   modes; greases + weapon-buff spells are the Armament category and single-select
-   (one at a time); a Spell Buff input drives the scaling spells.
-   Out of scope: on-hit ramps; charged/skill/move-specific talismans;
-   spell-scaling buffs; Black Flame Blade's %-HP DoT.
+   constants). **55-entry sourced dataset**. UI "Gear & buffs" picker feeds both
+   modes; a Spell Buff input drives the scaling spells. Slot-conflicting items
+   are single-select via `Modifier.exclusiveGroup` (UI-only) — greases +
+   weapon-buff spells share "armament"; attack-up armor helms (Rakshasa, White
+   Mask, Mushroom Crown, Black Dumpling) share "armor-helm".
+   Out of scope: on-hit ramps; charged/skill/move-specific talismans & armor
+   (jump/dance/post-roll); spell-only armor; spell-scaling buffs; Black Flame
+   Blade's %-HP DoT.
 6. ✅ **Inventory + UX** — owned-items inventory (searchable multi-select by
    base weapon via `listBaseWeapons()` + `RankFilter.ownedWeaponBaseNames`;
    owning an infusable base unlocks all its affinities, somber/unique = 1
@@ -112,9 +115,9 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
   per group, then multiplies group factors). Mutually-exclusive in-game pairs
   share a group (the two Golden Vows; FGMS / Howl of Shabriri); everything else
   gets its own group. Each modifier's `group` is just data.
-- The dataset is **50 entries** (incl. 13 greases + 5 weapon-buff spells),
-  cross-checked against Fextralife (every entry has a `source`). Values are
-  hand-transcribed (talisman/physick/grease/spell effects are NOT in the
+- The dataset is **55 entries** (incl. 13 greases + 5 weapon-buff spells + 5
+  attack-up armor), cross-checked against Fextralife (every entry has a
+  `source`). Values are hand-transcribed (these effects are NOT in the
   regulation JSON).
 - Known v1 simplifications to revisit: flat stat bonuses are clamped to 99 (the
   curves are only evaluated to 148 = two-handed 99); spell-scaling (catalyst)

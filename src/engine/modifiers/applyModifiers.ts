@@ -43,7 +43,13 @@ import { getWeaponAttack, type WeaponAttackOptions } from "../calc/getWeaponAtta
 /** The hard attribute cap; also the bound the soft-cap curves are evaluated to. */
 const ATTR_CAP = 99;
 
-export type ModifierKind = "talisman" | "physick" | "buff" | "grease" | "weapon-buff";
+export type ModifierKind =
+  | "talisman"
+  | "physick"
+  | "buff"
+  | "grease"
+  | "weapon-buff"
+  | "armor";
 
 /**
  * A flat damage add whose magnitude scales with the caster's catalyst, used for
@@ -105,6 +111,13 @@ export interface Modifier {
   /** Downside worth surfacing, e.g. "+10% damage taken". Informational only. */
   drawback?: string;
   dlc?: boolean;
+  /**
+   * Slot-exclusivity group for selection (UI-only; the engine ignores it). Items
+   * sharing a value can't be worn together in game (e.g. helms, or the single
+   * Armament buff slot), so the picker makes them single-select. Distinct from a
+   * multiplier's stacking `group`.
+   */
+  exclusiveGroup?: string;
   /** Where the values come from (attribution / community reference). */
   source: string;
 }

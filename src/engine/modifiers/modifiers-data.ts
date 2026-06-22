@@ -23,6 +23,10 @@ import type { Modifier } from "./applyModifiers.ts";
  * and resolved to concrete flat damage by `resolveModifiers(ids, spellBuff)`,
  * where `spellBuff` is the player's catalyst Spell Buff (read in game).
  *
+ * Armor pieces that raise general attack power on normal attacks (Rakshasa Set,
+ * White Mask, Mushroom Crown, …) are included as `kind: "armor"`. Slot-conflicting
+ * pieces share an `exclusiveGroup` so the UI keeps them single-select.
+ *
  * Deliberately NOT included, because the current model can't represent them
  * faithfully:
  *   - On-hit ramping effects (Winged Sword Insignia, Rotten Winged Sword
@@ -30,6 +34,9 @@ import type { Modifier } from "./applyModifiers.ts";
  *   - Charged- / skill- / move-specific talismans (Shard of Alexander,
  *     Godfrey Icon, Axe/Claw/Curved Sword/Spear/Roar/Lance talismans, the DLC
  *     dash/kick/throwable/bow talismans).
+ *   - Move-specific armor (Raptor's Black Feathers / Gravebird's = jump attacks;
+ *     Leda's = post-roll; Dancer's = dance skills) and spell-only armor (Snow
+ *     Witch Hat = cold sorceries; Lusat's/Azur's/Crucible/Spellblade sets, etc.).
  * Conditional effects that DO apply to normal attacks are included, with the
  * trigger noted in `condition`.
  *
@@ -473,6 +480,57 @@ export const MODIFIERS: readonly Modifier[] = [
     kind: "grease",
     flatDamage: { [AttackPowerType.SLEEP]: 33 },
     condition: "~60s; physical-affinity weapons only",
+    source: SRC,
+  },
+
+  // --- Armor: general / conditional attack-power up ------------------------
+  // Helm-slot pieces share exclusiveGroup "armor-helm" (one helm at a time).
+  // Each is its own multiplier group, so it stacks multiplicatively with the
+  // rest. Slot mixing (e.g. 3 Rakshasa pieces + a different helm) isn't modelled.
+  {
+    id: "rakshasa-set",
+    name: "Rakshasa Set",
+    kind: "armor",
+    multipliers: [{ group: "rakshasa", amount: 0.08 }],
+    condition: "full 4-piece set; raises all damage (low defense for its weight)",
+    exclusiveGroup: "armor-helm",
+    dlc: true,
+    source: SRC,
+  },
+  {
+    id: "white-mask",
+    name: "White Mask",
+    kind: "armor",
+    multipliers: [{ group: "white-mask", amount: 0.1 }],
+    condition: "helm; ~20s after blood loss procs nearby (your own counts)",
+    exclusiveGroup: "armor-helm",
+    source: SRC,
+  },
+  {
+    id: "mushroom-crown",
+    name: "Mushroom Crown",
+    kind: "armor",
+    multipliers: [{ group: "mushroom-crown", amount: 0.1 }],
+    condition: "helm; ~20s while poison or Scarlet Rot afflicts something nearby",
+    exclusiveGroup: "armor-helm",
+    source: SRC,
+  },
+  {
+    id: "black-dumpling",
+    name: "Black Dumpling",
+    kind: "armor",
+    multipliers: [{ group: "black-dumpling", amount: 0.1 }],
+    condition: "helm; while you're afflicted with madness",
+    drawback: "requires taking madness on yourself",
+    exclusiveGroup: "armor-helm",
+    source: SRC,
+  },
+  {
+    id: "twinbird-kite-shield",
+    name: "Twinbird Kite Shield",
+    kind: "armor",
+    multipliers: [{ group: "twinbird", amount: 0.05 }],
+    condition: "shield; while below 20% HP",
     source: SRC,
   },
 ];
