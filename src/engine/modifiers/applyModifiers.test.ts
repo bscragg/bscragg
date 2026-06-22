@@ -66,11 +66,11 @@ describe("applyAttributeBonuses", () => {
   });
 });
 
-describe("computeTypeMultipliers — additive within group, multiplicative across", () => {
-  it("adds amounts that share a group", () => {
+describe("computeTypeMultipliers — strongest within group, multiplicative across", () => {
+  it("takes the strongest of effects that share a group (they don't add)", () => {
     const m = computeTypeMultipliers([pct("g", 0.1, [PHYS]), pct("g", 0.2, [PHYS])]);
-    // 1 + (0.1 + 0.2) = 1.30
-    expect(m.get(PHYS)).toBeCloseTo(1.3, 10);
+    // same group -> mutually exclusive -> 1 + max(0.1, 0.2) = 1.20
+    expect(m.get(PHYS)).toBeCloseTo(1.2, 10);
   });
 
   it("multiplies amounts in different groups", () => {
@@ -82,10 +82,10 @@ describe("computeTypeMultipliers — additive within group, multiplicative acros
   it("combines both rules correctly", () => {
     const m = computeTypeMultipliers([
       pct("a", 0.1, [PHYS]),
-      pct("a", 0.1, [PHYS]), // same group -> additive => 1.2
+      pct("a", 0.2, [PHYS]), // same group -> strongest wins => 1.2
       pct("b", 0.5, [PHYS]), // other group -> multiplicative
     ]);
-    // (1 + 0.2) * (1 + 0.5) = 1.8
+    // (1 + max(0.1, 0.2)) * (1 + 0.5) = 1.2 * 1.5 = 1.8
     expect(m.get(PHYS)).toBeCloseTo(1.8, 10);
   });
 

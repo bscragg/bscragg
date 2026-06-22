@@ -26,16 +26,22 @@ logic. Sources, licenses, and how they are used are recorded here.
 ## Modifier data (talismans / physick / buffs)
 
 - **File:** `src/engine/modifiers/modifiers-data.ts`
-- **Provenance:** A curated, hand-entered set of common AR-relevant modifiers
-  (flat attribute bonuses and percentage attack-power boosts) for vanilla patch
-  1.14, with values cross-checked against the community knowledge base
-  (Fextralife wiki and the community calculator spreadsheets). Each entry carries
-  a `source` field. The Fextralife wiki is **not** scraped — values are
-  transcribed by hand and the set is deliberately small and extensible.
-- **Stacking model:** Effects are combined as **additive within a stacking
-  group, multiplicative across groups** — the standard Elden Ring rule — by
-  `src/engine/modifiers/applyModifiers.ts`. Conditional/skill-only multipliers
-  are intentionally omitted so AR numbers stay honest for ordinary attacks.
+- **Provenance:** A hand-entered set of AR-relevant modifiers (flat attribute
+  bonuses and percentage attack-power boosts on normal attacks) for vanilla
+  patch 1.14, with values cross-checked against the community knowledge base
+  (Fextralife wiki). Each entry carries a `source` field. The wiki is **not**
+  scraped — values are transcribed by hand. It aims to cover every modifier the
+  engine can represent faithfully.
+- **Stacking model:** `src/engine/modifiers/applyModifiers.ts` combines effects
+  as **strongest-applies within a stacking group, multiplicative across groups**
+  — matching Elden Ring's buff rules, where same-category buffs (e.g. two body
+  buffs, or Golden Vow incantation vs. its Ash of War) are mutually exclusive and
+  overwrite rather than stack, while different categories multiply.
+- **Out of scope** (the model can't represent these faithfully, so they are
+  omitted by design): flat-elemental weapon buffs (Bloodflame Blade, Scholar's
+  Armament, …) and greases; on-hit ramping effects (Winged Sword Insignia,
+  Thorny/Spiked tears); and charged-/skill-/move-specific talismans (Shard of
+  Alexander, Godfrey Icon, Claw/Axe/etc.) that don't affect ordinary-attack AR.
 
 ## Cross-reference only (not data sources)
 

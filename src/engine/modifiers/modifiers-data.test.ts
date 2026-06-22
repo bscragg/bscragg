@@ -50,7 +50,7 @@ describe("modifier dataset integrity", () => {
 
 describe("lookup helpers", () => {
   it("getModifier resolves by id and returns undefined for unknown", () => {
-    expect(getModifier("golden-vow")?.name).toBe("Golden Vow");
+    expect(getModifier("golden-vow")?.name).toBe("Golden Vow (incantation)");
     expect(getModifier("does-not-exist")).toBeUndefined();
   });
 
@@ -105,5 +105,49 @@ describe("dataset applied through the real engine", () => {
       plain.attackPower[AttackPowerType.PHYSICAL]!,
       6,
     );
+  });
+});
+
+describe("expanded catalogue — stacking specifics", () => {
+  const weapon = findWeapon("Longsword")!;
+  const level = weapon.maxUpgradeLevel;
+  const a = attrs(60, 60);
+  const basePhys = () =>
+    getWeaponAttack({ weapon, attributes: a, upgradeLevel: level }).attackPower[
+      AttackPowerType.PHYSICAL
+    ]!;
+  const moddedPhys = (ids: string[]) =>
+    getModifiedWeaponAttack({ weapon, attributes: a, upgradeLevel: level, modifiers: getModifiers(ids) })
+      .attackPower[AttackPowerType.PHYSICAL]!;
+
+  it("two Body buffs are mutually exclusive — the stronger applies, not sum or product", () => {
+    const base = basePhys();
+    expect(moddedPhys(["flame-grant-me-strength"])).toBeCloseTo(base * 1.2, 4);
+    // Howl (+25%) is the stronger body buff; picking both yields ×1.25 — not
+    // ×1.20×1.25 (product) and not ×1.45 (sum).
+    expect(moddedPhys(["flame-grant-me-strength", "howl-of-shabriri"])).toBeCloseTo(base * 1.25, 4);
+  });
+
+  it("the two Golden Vows share a group — the stronger (incantation) wins", () => {
+    expect(moddedPhys(["golden-vow", "golden-vow-ash"])).toBeCloseTo(basePhys() * 1.15, 4);
+  });
+
+  it("Outer God Heirloom grants +5 Arcane (the DLC arcane heirloom)", () => {
+    const m = getModifier("outer-god-heirloom")!;
+    expect(m.attributeBonuses).toEqual({ arc: 5 });
+    expect(m.dlc).toBe(true);
+  });
+
+  it("all four elemental Shrouding tears exist and are base game", () => {
+    for (const id of [
+      "magic-shrouding-cracked-tear",
+      "flame-shrouding-cracked-tear",
+      "lightning-shrouding-cracked-tear",
+      "holy-shrouding-cracked-tear",
+    ]) {
+      const m = getModifier(id);
+      expect(m).toBeTruthy();
+      expect(m!.dlc).toBeUndefined();
+    }
   });
 });

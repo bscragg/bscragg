@@ -303,7 +303,8 @@ function modifierNote(m: Modifier): string {
     );
   }
   for (const mult of m.multipliers ?? []) {
-    parts.push(`+${Math.round(mult.amount * 100)}%`);
+    // Up to one decimal, so e.g. 0.115 shows as "11.5%" not "12%".
+    parts.push(`+${+(mult.amount * 100).toFixed(1)}%`);
   }
   if (m.condition) parts.push(m.condition);
   if (m.drawback) parts.push(`⚠ ${m.drawback}`);
@@ -336,8 +337,9 @@ function ModifierPicker({
         )}
       </summary>
       <p className="hint">
-        Flat stat bonuses feed into scaling; % effects stack additively within a group and
-        multiplicatively across groups. Applies to both ranking and optimizing.
+        Flat stat bonuses feed into scaling. % buffs from different sources multiply; alternatives
+        in the same category (e.g. two body buffs) don't stack — the strongest applies. Conditions
+        (e.g. “HP full”) are noted per item. Applies to both ranking and optimizing.
       </p>
       <div className="gear-groups">
         {MODIFIER_GROUPS.map(({ kind, label }) => (

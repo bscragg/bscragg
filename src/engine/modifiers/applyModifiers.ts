@@ -18,12 +18,16 @@ import { getWeaponAttack, type WeaponAttackOptions } from "../calc/getWeaponAtta
  *   2. **Percentage AR multipliers** (e.g. Golden Vow +15%) apply *after* the
  *      calc, per damage type.
  *
- * The multiplier stacking model — the standard Elden Ring rule, and the design
- * the handoff specifies — is **additive within a group, multiplicative across
- * groups**. Each multiplier carries a `group` tag: effects sharing a group add
- * together, then the per-group totals multiply. For a damage type `t`:
+ * The multiplier stacking model follows Elden Ring's buff rules: **only the
+ * strongest effect in a group applies (same-category buffs are mutually
+ * exclusive in game — they overwrite rather than add), and different groups
+ * multiply.** Each multiplier carries a `group` tag. For a damage type `t`:
  *
- *     multiplier(t) = Π over groups g ( 1 + Σ over effects in g affecting t )
+ *     multiplier(t) = Π over groups g ( 1 + max of effects in g affecting t )
+ *
+ * (e.g. Flame Grant Me Strength and Howl of Shabriri are both Body buffs, so
+ * picking both yields the stronger of the two, not their sum; Golden Vow is a
+ * separate group, so it multiplies on top.)
  *
  * This module is pure (no React, no I/O) so the stacking math is unit-tested
  * independently of any dataset. See `modifiers-data.ts` for the vendored values.
@@ -39,10 +43,11 @@ export type ModifierKind = "talisman" | "physick" | "buff";
 
 export interface ModifierMultiplier {
   /**
-   * Stacking group. Effects with the same `group` are summed (additive); the
+   * Stacking group. Within a group only the strongest effect applies (in-game,
+   * same-category buffs are mutually exclusive — they overwrite, not add); the
    * resulting per-group factors multiply across different groups. Use the same
-   * group for in-game effects that share a category (and so don't stack), and
-   * distinct groups for effects that stack multiplicatively.
+   * group for mutually-exclusive in-game effects, distinct groups for effects
+   * that stack multiplicatively.
    */
   group: string;
   /** Fractional boost applied to the affected types. `0.15` = +15%. */
@@ -98,35 +103,36 @@ export function applyAttributeBonuses(
 }
 
 /**
- * Resolve the per-type AR multiplier for a set of modifiers using the
- * additive-within-group / multiplicative-across-groups model. Returns a map from
- * attack-power type to its multiplier (only types with at least one effect are
- * present; absent types are an implicit ×1).
+ * Resolve the per-type AR multiplier for a set of modifiers: within each group
+ * the strongest effect wins (mutually-exclusive same-category buffs), then the
+ * per-group factors multiply. Returns a map from attack-power type to its
+ * multiplier (only types with at least one effect are present; absent types are
+ * an implicit ×1).
  */
 export function computeTypeMultipliers(
   modifiers: readonly Modifier[],
 ): Map<AttackPowerType, number> {
-  // group -> (type -> summed additive amount)
-  const groupSums = new Map<string, Map<AttackPowerType, number>>();
+  // group -> (type -> strongest amount in that group)
+  const groupBest = new Map<string, Map<AttackPowerType, number>>();
 
   for (const modifier of modifiers) {
     for (const mult of modifier.multipliers ?? []) {
       const types = mult.types ?? allDamageTypes;
-      let byType = groupSums.get(mult.group);
+      let byType = groupBest.get(mult.group);
       if (!byType) {
         byType = new Map();
-        groupSums.set(mult.group, byType);
+        groupBest.set(mult.group, byType);
       }
       for (const type of types) {
-        byType.set(type, (byType.get(type) ?? 0) + mult.amount);
+        byType.set(type, Math.max(byType.get(type) ?? 0, mult.amount));
       }
     }
   }
 
   const result = new Map<AttackPowerType, number>();
-  for (const byType of groupSums.values()) {
-    for (const [type, sum] of byType) {
-      result.set(type, (result.get(type) ?? 1) * (1 + sum));
+  for (const byType of groupBest.values()) {
+    for (const [type, best] of byType) {
+      result.set(type, (result.get(type) ?? 1) * (1 + best));
     }
   }
   return result;
