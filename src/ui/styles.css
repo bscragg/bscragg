@@ -32,10 +32,55 @@ body {
   line-height: 1.45;
 }
 
+body {
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* A large, soft moon behind the header — scrolls away with the page. */
+body::before {
+  content: "";
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  width: 560px;
+  height: 560px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 62% 32%, rgba(150, 168, 196, 0.1), transparent 13%),
+    radial-gradient(circle at 44% 58%, rgba(150, 168, 196, 0.08), transparent 11%),
+    radial-gradient(circle at 58% 64%, rgba(150, 168, 196, 0.07), transparent 9%),
+    radial-gradient(
+      circle at 40% 36%,
+      rgba(216, 230, 244, 0.16),
+      rgba(184, 202, 226, 0.09) 46%,
+      transparent 70%
+    );
+}
+
 .app {
+  position: relative;
+  z-index: 1;
   max-width: 1000px;
   margin: 0 auto;
   padding: 1rem;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.moonmark {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  color: var(--accent);
+  opacity: 0.92;
+  filter: drop-shadow(0 0 10px var(--accent-glow));
 }
 
 h1 {

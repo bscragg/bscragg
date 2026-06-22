@@ -138,7 +138,16 @@ export function App() {
   return (
     <main className="app">
       <header>
-        <h1>EldenAR</h1>
+        <div className="brand">
+          <svg className="moonmark" viewBox="0 0 48 48" aria-hidden="true">
+            <g fill="currentColor">
+              {/* Witch-hat silhouette — a nod to Ranni. */}
+              <ellipse cx="24" cy="37" rx="21" ry="4.6" />
+              <path d="M13 37C13 27 15 15 25 9c5-3 7 0 4.5 4.5C26 20 26 30 33 37Z" />
+            </g>
+          </svg>
+          <h1>EldenAR</h1>
+        </div>
         <p className="tagline">
           Maximize your <strong>Attack Rating</strong>. <span className="warn">AR, not DPS</span> —
           motion values &amp; target defense aren't modeled yet.
