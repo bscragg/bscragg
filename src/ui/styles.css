@@ -1,13 +1,17 @@
 :root {
   color-scheme: dark;
-  --bg: #14110c;
-  --panel: #1f1a12;
-  --line: #3a3122;
-  --text: #e9e0cf;
-  --dim: #a99e87;
-  --gold: #c9a85c;
-  --warn: #e0b341;
-  --unmet: #6b5d3f;
+  /* Moonlit-cosmos palette, inspired by Ranni: deep night sky, silver-blue
+     light, her glowing teal eye as the accent, and the tan cloak-straps kept
+     as the warm "warning" colour so flags still pop against the cool tones. */
+  --bg: #090d1a;
+  --panel: #131a2e;
+  --line: #2b3553;
+  --text: #e9eef8;
+  --dim: #93a3c6;
+  --accent: #5ad2c6;
+  --accent-glow: rgba(90, 210, 198, 0.45);
+  --warn: #d8b25a;
+  --unmet: #4b577a;
 }
 
 * {
@@ -16,7 +20,13 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  min-height: 100vh;
+  /* Moon glow from above, a faint violet nebula off to one side, over deep night. */
+  background:
+    radial-gradient(125% 80% at 50% -12%, rgba(90, 210, 198, 0.1), transparent 58%),
+    radial-gradient(90% 70% at 85% 6%, rgba(120, 95, 190, 0.13), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.45;
@@ -29,9 +39,10 @@ body {
 }
 
 h1 {
-  color: var(--gold);
+  color: var(--accent);
   margin: 0;
   letter-spacing: 0.04em;
+  text-shadow: 0 0 22px var(--accent-glow);
 }
 
 .tagline {
@@ -61,12 +72,12 @@ h1 {
 
 .field > span {
   font-weight: 600;
-  color: var(--gold);
+  color: var(--accent);
 }
 
 select,
 input[type="number"] {
-  background: #110d08;
+  background: #0d1326;
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -129,7 +140,7 @@ input[type="number"] {
 .gear > summary {
   cursor: pointer;
   font-weight: 600;
-  color: var(--gold);
+  color: var(--accent);
   list-style: revert;
 }
 
@@ -149,7 +160,7 @@ input[type="number"] {
 .gear-group h3 {
   margin: 0 0 0.4rem;
   font-size: 0.85rem;
-  color: var(--gold);
+  color: var(--accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -199,7 +210,7 @@ input[type="number"] {
 .inv > summary {
   cursor: pointer;
   font-weight: 600;
-  color: var(--gold);
+  color: var(--accent);
   list-style: revert;
 }
 
@@ -212,7 +223,7 @@ input[type="number"] {
 }
 
 .chip {
-  background: #2a2316;
+  background: #1b2540;
   color: var(--text);
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -222,8 +233,8 @@ input[type="number"] {
 }
 
 .chip:hover {
-  border-color: var(--gold);
-  color: var(--gold);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .inv-search {
@@ -262,8 +273,8 @@ input[type="number"] {
 }
 
 button {
-  background: var(--gold);
-  color: #1a1408;
+  background: var(--accent);
+  color: #06121b;
   border: none;
   border-radius: 6px;
   padding: 0.55rem 1rem;
@@ -302,14 +313,14 @@ td {
 }
 
 thead th {
-  background: #2a2316;
-  color: var(--gold);
+  background: #1b2540;
+  color: var(--accent);
   position: sticky;
   top: 0;
 }
 
 tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(120, 170, 255, 0.045);
 }
 
 .num {
@@ -318,7 +329,7 @@ tbody tr:nth-child(even) {
 
 .strong {
   font-weight: 700;
-  color: var(--gold);
+  color: var(--accent);
 }
 
 .dim {
