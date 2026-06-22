@@ -55,3 +55,6 @@ pinned to **vanilla patch 1.14** (post Shadow of the Erdtree). See
 5. ✅ **Modifiers** — talismans + physick + buffs + greases + weapon-buff spells + attack-up armor. Effects combine as `AR = (base + flat) × mult`: flat attribute bonuses feed scaling, greases add fixed flat damage, weapon-buff spells add catalyst-scaling flat damage (`factor × your Spell Buff`), and % buffs (incl. armor like the Rakshasa Set / White Mask) apply strongest-within-group / multiplicative-across. Slot-conflicting items are single-select. 55-entry sourced catalogue. Wired into rank & optimize; selectable in the UI.
 6. ✅ **Inventory + UX** — owned-items inventory (searchable multi-select by base weapon; owning an infusable weapon unlocks all its affinities), an upgrade-level selector (regular +0–25 scale, somber weapons mapped; per-weapon level shown), trade-off insights (score Δ from #1 inline, AR-per-point in optimize, and a "best affinity per weapon" rollup), shareable/persisted build state (URL hash + localStorage, "Copy share link"), and responsive/mobile layout.
 7. ⏳ **(Stretch) True DPS** — motion values + target defense.
+
+See [ROADMAP.md](./ROADMAP.md) for queued ideas (consumables, a buff
+activation-order guide, and more).

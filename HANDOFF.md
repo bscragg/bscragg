@@ -100,11 +100,13 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
 ## Resuming next time — suggested first message
 
 > "Resume EldenAR on branch claude/coding-session-werkha. Read HANDOFF.md, run
-> `npm test` to confirm green (112 tests). Phases 1–6 are fully done. Options:
-> derive the weapon-buff Spell Buff from a chosen catalyst + stats (instead of a
-> manual number); add a saved-builds list (named presets beyond the single URL
-> state); or scope Phase 7 (true DPS — needs a new data source for motion values
-> & target defense)."
+> `npm test` to confirm green (115 tests). Phases 1–6 are fully done. See
+> ROADMAP.md for queued ideas — consumables, a buff activation-order guide,
+> catalyst-derived Spell Buff, named saved builds — or scope Phase 7 (true DPS,
+> needs a new data source for motion values & target defense)."
+
+Forward-looking design notes live in **ROADMAP.md** (consumables; the buff
+order-of-operations guide; and the items above).
 
 ## Phase 5 notes (done — reference for Phase 6 and beyond)
 
