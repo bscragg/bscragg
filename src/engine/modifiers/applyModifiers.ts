@@ -43,7 +43,21 @@ import { getWeaponAttack, type WeaponAttackOptions } from "../calc/getWeaponAtta
 /** The hard attribute cap; also the bound the soft-cap curves are evaluated to. */
 const ATTR_CAP = 99;
 
-export type ModifierKind = "talisman" | "physick" | "buff" | "grease";
+export type ModifierKind = "talisman" | "physick" | "buff" | "grease" | "weapon-buff";
+
+/**
+ * A flat damage add whose magnitude scales with the caster's catalyst, used for
+ * weapon-buff spells (e.g. Scholar's Armament adds magic = 0.75 × the staff's
+ * Spell Buff). This is descriptive metadata: `resolveModifiers(ids, spellBuff)`
+ * folds it into concrete `flatDamage`, so the pure engine never reads it.
+ */
+export interface ScalingDamage {
+  types: readonly AttackPowerType[];
+  /** Added damage = `factor × spellBuff`. */
+  factor: number;
+  /** Which catalyst stat supplies the spell buff — for labelling only. */
+  basis: "sorcery" | "incant";
+}
 
 export interface ModifierMultiplier {
   /**
@@ -78,6 +92,12 @@ export interface Modifier {
    * don't scale with the weapon or the player's stats.
    */
   flatDamage?: Partial<Record<AttackPowerType, number>>;
+  /**
+   * Catalyst-scaling flat damage (weapon-buff spells). Descriptive only — the
+   * engine ignores it; `resolveModifiers` turns it into `flatDamage` given the
+   * player's spell buff. Kept on the type so the dataset can carry it.
+   */
+  scalingDamage?: ScalingDamage;
   /** Percentage AR effects, applied after the calc. */
   multipliers?: readonly ModifierMultiplier[];
   /** Activation caveat that the user must satisfy, e.g. "while HP is at maximum". */

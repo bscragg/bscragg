@@ -19,6 +19,20 @@ export function findWeapon(name: string): CalcWeapon | undefined {
   return getCalcWeapons().find((w) => w.name === name);
 }
 
+/**
+ * Map a requested upgrade level to a weapon's actual level. `upgrade` is on the
+ * regular Smithing-Stone 0–25 scale; `"max"` uses the weapon's own cap. Somber
+ * weapons (cap +10) are mapped proportionally, so e.g. a "+18" request lands at
+ * the equivalent somber level (+7) rather than over-levelling them to +10. The
+ * returned level is what the calc evaluates and what the UI shows per weapon.
+ */
+export function resolveUpgradeLevel(weapon: CalcWeapon, upgrade: number | "max"): number {
+  const max = weapon.maxUpgradeLevel;
+  if (upgrade === "max") return max;
+  const scaled = Math.round((upgrade / 25) * max);
+  return Math.max(0, Math.min(max, scaled));
+}
+
 /** A distinct base weapon (by `weaponName`), with display metadata for inventory selection. */
 export interface BaseWeapon {
   /** Base name without affinity, e.g. "Longsword". */

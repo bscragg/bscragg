@@ -246,6 +246,22 @@ input[type="number"] {
   border: 1px solid var(--line);
 }
 
+.spellbuff {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.spellbuff > span:first-child {
+  font-size: 0.8rem;
+  color: var(--dim);
+}
+
+.spellbuff input {
+  width: 96px;
+}
+
 .inv {
   margin-top: 1rem;
   border-top: 1px solid var(--line);
@@ -315,6 +331,23 @@ input[type="number"] {
   align-items: flex-end;
   gap: 1rem;
   margin: 1rem 0 0.75rem;
+}
+
+.upgrade {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.upgrade input {
+  width: 64px;
+  padding: 0.3rem 0.4rem;
+}
+
+.lvl {
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 button {

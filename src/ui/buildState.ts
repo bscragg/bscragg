@@ -14,6 +14,10 @@ export interface BuildState {
   requireReqs: boolean;
   includeDlc: boolean;
   budget: number;
+  /** Weapon upgrade level on the regular 0–25 scale (somber weapons are mapped). */
+  upgrade: number;
+  /** Catalyst Spell Buff (sorcery/incant scaling) for weapon-buff spells. */
+  spellBuff: number;
   modifierIds: string[];
   ownedBaseNames: string[];
 }
@@ -26,6 +30,8 @@ export const DEFAULT_STATE: BuildState = {
   requireReqs: false,
   includeDlc: true,
   budget: 150,
+  upgrade: 25,
+  spellBuff: 250,
   modifierIds: [],
   ownedBaseNames: [],
 };
@@ -38,6 +44,8 @@ function freshDefault(): BuildState {
 
 const clampAttr = (n: number) => Math.max(1, Math.min(99, Math.round(n)));
 const clampBudget = (n: number) => Math.max(5, Math.min(495, Math.round(n)));
+const clampUpgrade = (n: number) => Math.max(0, Math.min(25, Math.round(n)));
+const clampSpellBuff = (n: number) => Math.max(0, Math.min(600, Math.round(n)));
 
 /** Encode a build to a compact `URLSearchParams` query string (no leading `?`). */
 export function encodeState(s: BuildState): string {
@@ -50,6 +58,8 @@ export function encodeState(s: BuildState): string {
   if (s.requireReqs) p.set("rq", "1");
   if (!s.includeDlc) p.set("dlc", "0");
   p.set("bg", String(s.budget));
+  p.set("up", String(s.upgrade));
+  p.set("sb", String(s.spellBuff));
   for (const id of s.modifierIds) p.append("mod", id);
   for (const n of s.ownedBaseNames) p.append("own", n);
   return p.toString();
@@ -86,6 +96,12 @@ export function decodeState(query: string): BuildState {
 
   const bg = Number(p.get("bg"));
   if (Number.isFinite(bg) && bg > 0) s.budget = clampBudget(bg);
+
+  const up = p.get("up");
+  if (up !== null && Number.isFinite(Number(up))) s.upgrade = clampUpgrade(Number(up));
+
+  const sb = p.get("sb");
+  if (sb !== null && Number.isFinite(Number(sb))) s.spellBuff = clampSpellBuff(Number(sb));
 
   const mods = p.getAll("mod");
   if (mods.length) s.modifierIds = mods;

@@ -4,7 +4,13 @@ import { findWeapon } from "../calc/weapons.ts";
 import { getWeaponAttack } from "../calc/getWeaponAttack.ts";
 import type { Attributes } from "../calc/types.ts";
 import { getModifiedWeaponAttack } from "./applyModifiers.ts";
-import { MODIFIERS, getModifier, getModifiers, modifiersByKind } from "./modifiers-data.ts";
+import {
+  MODIFIERS,
+  getModifier,
+  getModifiers,
+  resolveModifiers,
+  modifiersByKind,
+} from "./modifiers-data.ts";
 
 const attrs = (str: number, dex: number, int = 10, fai = 10, arc = 10): Attributes => ({
   str,
@@ -24,12 +30,13 @@ describe("modifier dataset integrity", () => {
     for (const m of MODIFIERS) expect(m.source.length).toBeGreaterThan(0);
   });
 
-  it("every modifier does something (a bonus, flat damage, or a multiplier)", () => {
+  it("every modifier does something (a bonus, flat/scaling damage, or a multiplier)", () => {
     for (const m of MODIFIERS) {
-      const hasBonus = m.attributeBonuses && Object.keys(m.attributeBonuses).length > 0;
-      const hasFlat = m.flatDamage && Object.keys(m.flatDamage).length > 0;
-      const hasMult = m.multipliers && m.multipliers.length > 0;
-      expect(hasBonus || hasFlat || hasMult).toBe(true);
+      const hasBonus = !!m.attributeBonuses && Object.keys(m.attributeBonuses).length > 0;
+      const hasFlat = !!m.flatDamage && Object.keys(m.flatDamage).length > 0;
+      const hasScaling = !!m.scalingDamage && m.scalingDamage.types.length > 0;
+      const hasMult = !!m.multipliers && m.multipliers.length > 0;
+      expect(hasBonus || hasFlat || hasScaling || hasMult).toBe(true);
     }
   });
 
@@ -42,11 +49,12 @@ describe("modifier dataset integrity", () => {
     }
   });
 
-  it("covers all four kinds", () => {
+  it("covers all five kinds", () => {
     expect(modifiersByKind("talisman").length).toBeGreaterThan(0);
     expect(modifiersByKind("physick").length).toBeGreaterThan(0);
     expect(modifiersByKind("buff").length).toBeGreaterThan(0);
     expect(modifiersByKind("grease").length).toBeGreaterThan(0);
+    expect(modifiersByKind("weapon-buff").length).toBeGreaterThan(0);
   });
 
   it("greases carry flat damage and no scaling effects", () => {
@@ -189,5 +197,57 @@ describe("expanded catalogue — stacking specifics", () => {
       modifiers: getModifiers(["blood-grease"]),
     }).attackPower[AttackPowerType.BLEED];
     expect(bleed).toBeCloseTo(30, 6);
+  });
+});
+
+describe("weapon-buff spells — catalyst-scaling resolution", () => {
+  const weapon = findWeapon("Longsword")!;
+  const level = weapon.maxUpgradeLevel;
+  const a = attrs(60, 60);
+
+  it("resolveModifiers folds scalingDamage into flatDamage at the given spell buff", () => {
+    const [scholars] = resolveModifiers(["scholars-armament"], 200);
+    expect(scholars!.flatDamage?.[AttackPowerType.MAGIC]).toBeCloseTo(0.75 * 200, 6);
+  });
+
+  it("an unresolved weapon-buff spell adds nothing (engine ignores scalingDamage)", () => {
+    const fire = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: getModifiers(["bloodflame-blade"]), // NOT resolved
+    }).attackPower[AttackPowerType.FIRE];
+    expect(fire ?? 0).toBe(0);
+  });
+
+  it("Scholar's Armament adds magic = 0.75 × spell buff through the engine", () => {
+    const magic = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: resolveModifiers(["scholars-armament"], 240),
+    }).attackPower[AttackPowerType.MAGIC];
+    expect(magic).toBeCloseTo(0.75 * 240, 4);
+  });
+
+  it("Bloodflame Blade scales fire and keeps its fixed +40 bleed rider", () => {
+    const res = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: resolveModifiers(["bloodflame-blade"], 200),
+    });
+    expect(res.attackPower[AttackPowerType.FIRE]).toBeCloseTo(0.4 * 200, 4);
+    expect(res.attackPower[AttackPowerType.BLEED]).toBeCloseTo(40, 6);
+  });
+
+  it("scaling fire is then amplified by an attack-up multiplier", () => {
+    const fire = getModifiedWeaponAttack({
+      weapon,
+      attributes: a,
+      upgradeLevel: level,
+      modifiers: [...resolveModifiers(["electrify-armament"], 200), ...getModifiers(["golden-vow"])],
+    }).attackPower[AttackPowerType.LIGHTNING];
+    expect(fire).toBeCloseTo(0.75 * 200 * 1.15, 3);
   });
 });

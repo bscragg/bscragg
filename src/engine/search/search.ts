@@ -1,7 +1,7 @@
 import { AttackPowerType, type Attribute } from "../data/schema.ts";
 import { affinityName } from "../data/affinities.ts";
 import { weaponTypeName, catalystWeaponTypes } from "../calc/weaponTypes.ts";
-import { getCalcWeapons } from "../calc/weapons.ts";
+import { getCalcWeapons, resolveUpgradeLevel } from "../calc/weapons.ts";
 import type { Attributes, CalcWeapon } from "../calc/types.ts";
 import { getModifiedWeaponAttack, type Modifier } from "../modifiers/applyModifiers.ts";
 import { scoreResult, sumDamage, isSpellObjective, type SearchObjective } from "./objectives.ts";
@@ -30,7 +30,11 @@ export interface RankOptions {
   attributes: Attributes;
   objective: SearchObjective;
   twoHanding?: boolean;
-  /** Upgrade level to evaluate. "max" uses each weapon's own cap (+25 or +10). Default "max". */
+  /**
+   * Upgrade level to evaluate, on the regular 0–25 scale. "max" uses each
+   * weapon's own cap; a number maps proportionally for somber weapons (so +18 on
+   * a somber weapon evaluates at its +7). Default "max".
+   */
   upgradeLevel?: number | "max";
   filter?: RankFilter;
   /** Talismans / physick tears / buffs to apply on top of base AR. Default none. */
@@ -99,10 +103,7 @@ export function rankWeapons(options: RankOptions): RankedWeapon[] {
   for (const weapon of getCalcWeapons()) {
     if (!passesFilter(weapon, objective, filter)) continue;
 
-    const level =
-      upgradeLevel === "max"
-        ? weapon.maxUpgradeLevel
-        : Math.min(upgradeLevel, weapon.maxUpgradeLevel);
+    const level = resolveUpgradeLevel(weapon, upgradeLevel);
 
     const attack = getModifiedWeaponAttack({ weapon, attributes, twoHanding, upgradeLevel: level, modifiers });
     const requirementsMet = attack.ineffectiveAttributes.length === 0;

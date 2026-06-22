@@ -17,12 +17,14 @@ import type { Modifier } from "./applyModifiers.ts";
  * its own group so it multiplies. Greases are the "Armament" category — only one
  * is active at a time, enforced at selection (the UI makes them single-select).
  *
+ * Weapon-buff SPELLS (Scholar's Armament, Bloodflame Blade, …) add elemental
+ * damage that SCALES with the catalyst's spell/incant scaling (≈ factor ×
+ * scaling), so they aren't fixed constants. They're modelled via `scalingDamage`
+ * and resolved to concrete flat damage by `resolveModifiers(ids, spellBuff)`,
+ * where `spellBuff` is the player's catalyst Spell Buff (read in game).
+ *
  * Deliberately NOT included, because the current model can't represent them
  * faithfully:
- *   - Weapon-buff SPELLS (Scholar's Armament, Bloodflame Blade, Black Flame
- *     Blade, Electrify Armament, Order's Blade, …): their elemental add SCALES
- *     with the catalyst's spell/incant scaling (≈ mult × scaling), so it is not
- *     a fixed constant. Greases (below) are fixed, so they ARE included.
  *   - On-hit ramping effects (Winged Sword Insignia, Rotten Winged Sword
  *     Insignia, Millicent's Prosthesis, Thorny/Spiked cracked tears).
  *   - Charged- / skill- / move-specific talismans (Shard of Alexander,
@@ -320,6 +322,51 @@ export const MODIFIERS: readonly Modifier[] = [
     source: SRC,
   },
 
+  // --- Weapon-buff spells (scaling flat damage; "Armament" — one at a time) -
+  // Added elemental = factor × the catalyst's Spell Buff (sorcery/incant scaling).
+  {
+    id: "scholars-armament",
+    name: "Scholar's Armament",
+    kind: "weapon-buff",
+    scalingDamage: { types: [AttackPowerType.MAGIC], factor: 0.75, basis: "sorcery" },
+    condition: "sorcery; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "electrify-armament",
+    name: "Electrify Armament",
+    kind: "weapon-buff",
+    scalingDamage: { types: [AttackPowerType.LIGHTNING], factor: 0.75, basis: "incant" },
+    condition: "incantation; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "orders-blade",
+    name: "Order's Blade",
+    kind: "weapon-buff",
+    scalingDamage: { types: [AttackPowerType.HOLY], factor: 0.75, basis: "incant" },
+    condition: "incantation; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "bloodflame-blade",
+    name: "Bloodflame Blade",
+    kind: "weapon-buff",
+    scalingDamage: { types: [AttackPowerType.FIRE], factor: 0.4, basis: "incant" },
+    flatDamage: { [AttackPowerType.BLEED]: 40 }, // fixed bleed rider
+    condition: "incantation; physical-affinity weapons only",
+    source: SRC,
+  },
+  {
+    id: "black-flame-blade",
+    name: "Black Flame Blade",
+    kind: "weapon-buff",
+    scalingDamage: { types: [AttackPowerType.FIRE], factor: 0.65, basis: "incant" },
+    condition: "incantation; physical-affinity weapons only",
+    drawback: "its %-HP damage-over-time isn't modelled (AR/buildup only)",
+    source: SRC,
+  },
+
   // --- Greases (fixed flat damage; "Armament" buff — one at a time) ---------
   // Standard elemental greases: +85 for 60s. Physical-affinity weapons only.
   {
@@ -440,6 +487,23 @@ export function getModifier(id: string): Modifier | undefined {
 /** Resolve a list of ids to modifiers, dropping any unknown ids. */
 export function getModifiers(ids: readonly string[]): Modifier[] {
   return ids.map((id) => byId.get(id)).filter((m): m is Modifier => m !== undefined);
+}
+
+/**
+ * Like {@link getModifiers}, but folds each modifier's catalyst-scaling
+ * `scalingDamage` into concrete `flatDamage` using `spellBuff` (the player's
+ * staff/seal Spell Buff). Weapon-buff spells must go through this for their
+ * elemental add to register — the pure engine only reads `flatDamage`.
+ */
+export function resolveModifiers(ids: readonly string[], spellBuff: number): Modifier[] {
+  return getModifiers(ids).map((m) => {
+    if (!m.scalingDamage) return m;
+    const flatDamage = { ...(m.flatDamage ?? {}) };
+    for (const type of m.scalingDamage.types) {
+      flatDamage[type] = (flatDamage[type] ?? 0) + m.scalingDamage.factor * spellBuff;
+    }
+    return { ...m, flatDamage };
+  });
 }
 
 /** All modifiers of a given kind, in declaration order. */

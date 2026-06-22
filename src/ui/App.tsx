@@ -9,7 +9,7 @@ import { objectiveLabel } from "../engine/search/objectives.ts";
 import { rankWeaponsForStyle } from "../engine/search/search.ts";
 import { optimizeAcrossWeapons, type OptimizedWeapon } from "../engine/optimize/optimizeStats.ts";
 import {
-  getModifiers,
+  resolveModifiers,
   modifiersByKind,
   type Modifier,
   type ModifierKind,
@@ -57,6 +57,8 @@ export function App() {
   const [requireReqs, setRequireReqs] = useState(initial.requireReqs);
   const [includeDlc, setIncludeDlc] = useState(initial.includeDlc);
   const [budget, setBudget] = useState(initial.budget);
+  const [upgrade, setUpgrade] = useState(initial.upgrade);
+  const [spellBuff, setSpellBuff] = useState(initial.spellBuff);
   const [modifierIds, setModifierIds] = useState<string[]>(initial.modifierIds);
   const [ownedBaseNames, setOwnedBaseNames] = useState<string[]>(initial.ownedBaseNames);
   const [optimized, setOptimized] = useState<OptimizedWeapon[] | null>(null);
@@ -65,7 +67,10 @@ export function App() {
   const style = getStyle(styleId) ?? getStyle("open")!;
   const isSpell = style.objective.kind === "spellScaling";
 
-  const modifiers = useMemo(() => getModifiers(modifierIds), [modifierIds]);
+  const modifiers = useMemo(
+    () => resolveModifiers(modifierIds, spellBuff),
+    [modifierIds, spellBuff],
+  );
   const ownedFilter = ownedBaseNames.length > 0 ? ownedBaseNames : undefined;
 
   // Remember the build across reloads and keep the URL shareable.
@@ -78,16 +83,19 @@ export function App() {
       requireReqs,
       includeDlc,
       budget,
+      upgrade,
+      spellBuff,
       modifierIds,
       ownedBaseNames,
     });
-  }, [styleId, mode, attributes, twoHanding, requireReqs, includeDlc, budget, modifierIds, ownedBaseNames]);
+  }, [styleId, mode, attributes, twoHanding, requireReqs, includeDlc, budget, upgrade, spellBuff, modifierIds, ownedBaseNames]);
 
   const ranked = useMemo(
     () =>
       rankWeaponsForStyle(style, {
         attributes,
         twoHanding,
+        upgradeLevel: upgrade,
         modifiers,
         filter: {
           requireRequirementsMet: requireReqs,
@@ -96,7 +104,7 @@ export function App() {
         },
         limit: 25,
       }),
-    [style, attributes, twoHanding, modifiers, requireReqs, includeDlc, ownedFilter],
+    [style, attributes, twoHanding, upgrade, modifiers, requireReqs, includeDlc, ownedFilter],
   );
 
   function runOptimize() {
@@ -107,6 +115,7 @@ export function App() {
         objective: style.objective,
         budget: { total: budget },
         twoHanding,
+        upgradeLevel: upgrade,
         meetRequirements: true,
         modifiers,
         filter: {
@@ -130,6 +139,8 @@ export function App() {
     setRequireReqs(DEFAULT_STATE.requireReqs);
     setIncludeDlc(DEFAULT_STATE.includeDlc);
     setBudget(DEFAULT_STATE.budget);
+    setUpgrade(DEFAULT_STATE.upgrade);
+    setSpellBuff(DEFAULT_STATE.spellBuff);
     setModifierIds([]);
     setOwnedBaseNames([]);
     setOptimized(null);
@@ -249,11 +260,30 @@ export function App() {
             <input type="checkbox" checked={includeDlc} onChange={(e) => setIncludeDlc(e.target.checked)} />{" "}
             Include DLC
           </label>
+          <label className="upgrade">
+            <span>Upgrade +</span>
+            <input
+              type="number"
+              min={0}
+              max={25}
+              value={upgrade}
+              onChange={(e) => setUpgrade(Math.max(0, Math.min(25, Number(e.target.value) || 0)))}
+            />
+          </label>
         </div>
+        <p className="hint">
+          Upgrade level on the regular +0–+25 scale ({upgrade === 25 ? "max" : `+${upgrade}`}). Somber
+          weapons are mapped to their +0–+10 scale; each weapon shows its actual level.
+        </p>
 
         <InventoryPicker selected={ownedBaseNames} onChange={setOwnedBaseNames} />
 
-        <ModifierPicker selected={modifierIds} onChange={setModifierIds} />
+        <ModifierPicker
+          selected={modifierIds}
+          onChange={setModifierIds}
+          spellBuff={spellBuff}
+          onSpellBuff={setSpellBuff}
+        />
 
         <BuildToolbar
           getState={() => ({
@@ -264,6 +294,8 @@ export function App() {
             requireReqs,
             includeDlc,
             budget,
+            upgrade,
+            spellBuff,
             modifierIds,
             ownedBaseNames,
           })}
@@ -291,8 +323,11 @@ const MODIFIER_GROUPS: { kind: ModifierKind; label: string }[] = [
   { kind: "talisman", label: "Talismans" },
   { kind: "physick", label: "Wondrous Physick" },
   { kind: "buff", label: "Buffs" },
-  { kind: "grease", label: "Greases (one at a time)" },
+  { kind: "weapon-buff", label: "Weapon buffs (armament)" },
+  { kind: "grease", label: "Greases (armament)" },
 ];
+
+const BASIS_LABEL = { sorcery: "Sorcery Scaling", incant: "Incant Scaling" } as const;
 
 const TYPE_LABEL: Partial<Record<AttackPowerType, string>> = Object.fromEntries([
   ...DAMAGE_LABELS,
@@ -315,6 +350,12 @@ function modifierNote(m: Modifier): string {
         .join(", "),
     );
   }
+  if (m.scalingDamage) {
+    const label = m.scalingDamage.types
+      .map((t) => TYPE_LABEL[t] ?? "")
+      .join("/");
+    parts.push(`${label} ≈ ${m.scalingDamage.factor} × ${BASIS_LABEL[m.scalingDamage.basis]}`);
+  }
   for (const mult of m.multipliers ?? []) {
     // Up to one decimal, so e.g. 0.115 shows as "11.5%" not "12%".
     parts.push(`+${+(mult.amount * 100).toFixed(1)}%`);
@@ -327,20 +368,27 @@ function modifierNote(m: Modifier): string {
 function ModifierPicker({
   selected,
   onChange,
+  spellBuff,
+  onSpellBuff,
 }: {
   selected: string[];
   onChange: (ids: string[]) => void;
+  spellBuff: number;
+  onSpellBuff: (n: number) => void;
 }) {
   const [open, setOpen] = useState(selected.length > 0);
   const set = new Set(selected);
-  // Greases share the "Armament" buff category — only one can be active.
-  const greaseIds = new Set(modifiersByKind("grease").map((m) => m.id));
+  // Greases and weapon-buff spells are all the "Armament" category — only one
+  // can be active at a time, so selecting one clears the rest.
+  const armamentIds = new Set(
+    [...modifiersByKind("grease"), ...modifiersByKind("weapon-buff")].map((m) => m.id),
+  );
   function toggle(id: string) {
     const next = new Set(set);
     if (next.has(id)) {
       next.delete(id);
     } else {
-      if (greaseIds.has(id)) for (const g of greaseIds) next.delete(g);
+      if (armamentIds.has(id)) for (const g of armamentIds) next.delete(g);
       next.add(id);
     }
     onChange([...next]);
@@ -364,6 +412,19 @@ function ModifierPicker({
         {MODIFIER_GROUPS.map(({ kind, label }) => (
           <div key={kind} className="gear-group">
             <h3>{label}</h3>
+            {kind === "weapon-buff" && (
+              <label className="spellbuff">
+                <span>Catalyst Spell Buff</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={600}
+                  value={spellBuff}
+                  onChange={(e) => onSpellBuff(Math.max(0, Math.min(600, Number(e.target.value) || 0)))}
+                />
+                <span className="hint">your staff/seal's Sorcery / Incant Scaling</span>
+              </label>
+            )}
             {modifiersByKind(kind).map((m) => (
               <label key={m.id} className="mod" title={m.source}>
                 <input type="checkbox" checked={set.has(m.id)} onChange={() => toggle(m.id)} />
@@ -518,7 +579,7 @@ function RankTable({
   return (
     <section>
       <h2>
-        Top {rows.length} {isSpell ? "catalysts" : "weapons"} (each at max upgrade)
+        Top {rows.length} {isSpell ? "catalysts" : "weapons"}
       </h2>
       <div className="tablewrap">
         <table>
@@ -537,7 +598,7 @@ function RankTable({
               <tr key={r.name} className={r.requirementsMet ? "" : "unmet"}>
                 <td>{r.rank}</td>
                 <td>
-                  {r.weaponName}
+                  {r.weaponName} <span className="lvl">+{r.upgradeLevel}</span>
                   <span className="wt"> · {r.weaponTypeName}</span>
                   {!r.requirementsMet && <span className="flag" title="Requirements not met"> ⚠</span>}
                 </td>
@@ -587,7 +648,7 @@ function OptimizeTable({
               <tr key={r.name}>
                 <td>{r.rank}</td>
                 <td>
-                  {r.weaponName}
+                  {r.weaponName} <span className="lvl">+{r.upgradeLevel}</span>
                   <span className="wt"> · {r.weaponTypeName}</span>
                 </td>
                 <td>{r.affinityName}</td>

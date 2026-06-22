@@ -9,6 +9,8 @@ const sample: BuildState = {
   requireReqs: true,
   includeDlc: false,
   budget: 200,
+  upgrade: 18,
+  spellBuff: 310,
   modifierIds: ["golden-vow", "flame-grant-me-strength"],
   ownedBaseNames: ["Longsword", "Rivers of Blood", "Marais Executioner's Sword"],
 };
@@ -32,10 +34,11 @@ describe("buildState encode/decode", () => {
     expect(decodeState("not=a&real=build").styleId).toBe(DEFAULT_STATE.styleId);
   });
 
-  it("clamps out-of-range attributes and budget", () => {
-    const decoded = decodeState("a=200.-5.10.10.10&bg=9999");
+  it("clamps out-of-range attributes, budget, and upgrade", () => {
+    const decoded = decodeState("a=200.-5.10.10.10&bg=9999&up=99");
     expect(decoded.attributes.str).toBe(99);
     expect(decoded.attributes.dex).toBe(1);
     expect(decoded.budget).toBe(495);
+    expect(decoded.upgrade).toBe(25);
   });
 });

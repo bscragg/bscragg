@@ -6,7 +6,7 @@ import {
 } from "../data/schema.ts";
 import { affinityName } from "../data/affinities.ts";
 import { weaponTypeName } from "../calc/weaponTypes.ts";
-import { getCalcWeapons } from "../calc/weapons.ts";
+import { getCalcWeapons, resolveUpgradeLevel } from "../calc/weapons.ts";
 import type { Attributes, CalcWeapon } from "../calc/types.ts";
 import { getModifiedWeaponAttack, type Modifier } from "../modifiers/applyModifiers.ts";
 import { scoreResult, sumDamage, type SearchObjective } from "../search/objectives.ts";
@@ -147,10 +147,7 @@ function scoreAttributes(
 export function optimizeWeaponStats(options: OptimizeStatsOptions): OptimizeStatsResult {
   const { weapon, objective, budget, twoHanding = false, meetRequirements = true } = options;
   const modifiers = options.modifiers ?? [];
-  const level =
-    options.upgradeLevel === undefined || options.upgradeLevel === "max"
-      ? weapon.maxUpgradeLevel
-      : Math.min(options.upgradeLevel, weapon.maxUpgradeLevel);
+  const level = resolveUpgradeLevel(weapon, options.upgradeLevel ?? "max");
 
   const mins = resolveMinimums(weapon, budget, twoHanding, meetRequirements);
   const minSum = allAttributes.reduce((s, a) => s + mins[a], 0);
@@ -325,10 +322,7 @@ export function optimizeAcrossWeapons(options: OptimizeAcrossOptions): Optimized
     if (!result.feasible || result.score <= 0) continue;
     if (filter.requireRequirementsMet && !result.requirementsMet) continue;
 
-    const level =
-      options.upgradeLevel === undefined || options.upgradeLevel === "max"
-        ? weapon.maxUpgradeLevel
-        : Math.min(options.upgradeLevel, weapon.maxUpgradeLevel);
+    const level = resolveUpgradeLevel(weapon, options.upgradeLevel ?? "max");
 
     out.push({
       ...result,

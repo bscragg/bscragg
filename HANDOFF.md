@@ -22,7 +22,7 @@ values or target defenses in the data).
 
 ```bash
 npm install
-npm test           # vitest — 102 tests, the correctness bar
+npm test           # vitest — 111 tests, the correctness bar
 npm run typecheck
 npm run build      # static build -> dist/
 npm run dev        # local dev server
@@ -46,27 +46,31 @@ TypeScript + React/Vite · static hosting (GitHub Pages) · vanilla patch 1.14
    force. `optimizeWeaponStats` (one weapon) and `optimizeAcrossWeapons` (ranked).
    UI has a "Rank" mode and an "Optimize" mode.
 5. ✅ **Modifiers** (`src/engine/modifiers/`) — talismans + Wondrous Physick
-   tears + buffs + greases. Three effect kinds combine as
-   **`AR(t) = (base(t) + flat(t)) × mult(t)`**: flat attribute bonuses (e.g. +5
-   STR heirlooms, +10 stat-knot tears) feed scaling before the calc (clamped to
-   99); greases add **fixed flat damage** after the calc (`applyFlatDamage`); %
-   buffs apply last, **strongest-within-group / multiplicative-across-groups**
-   (ER mutual-exclusivity). `getModifiedWeaponAttack` is a drop-in for
-   `getWeaponAttack` (no modifiers ⇒ identical). Wired through `search` and
-   `optimize` (DP stays exact — flat adds are per-type constants). **45-entry
-   sourced dataset** (`modifiers-data.ts`). UI "Gear & buffs" picker feeds both
-   modes; greases are single-select (one Armament buff at a time).
-   Out of scope: **weapon-buff spells** (Scholar's Armament, Bloodflame Blade, …)
-   — elemental add scales with the catalyst, not a fixed constant; on-hit ramps;
-   charged/skill/move-specific talismans; spell-scaling buffs.
+   tears + buffs + greases + weapon-buff spells. Effects combine as
+   **`AR(t) = (base(t) + flat(t)) × mult(t)`**: flat attribute bonuses (+5
+   heirlooms, +10 stat-knot tears) feed scaling before the calc (clamped to 99);
+   greases add **fixed flat damage** + weapon-buff spells add **catalyst-scaling
+   flat damage** after the calc; % buffs apply last,
+   **strongest-within-group / multiplicative-across-groups**. Weapon-buff spells
+   carry `scalingDamage` (descriptive); `resolveModifiers(ids, spellBuff)` folds
+   it into concrete `flatDamage` so the **pure engine only reads `flatDamage`**
+   (no spellBuff threading through search/optimize). `getModifiedWeaponAttack` is
+   a drop-in for `getWeaponAttack`. DP stays exact (flat adds are per-type
+   constants). **50-entry sourced dataset**. UI "Gear & buffs" picker feeds both
+   modes; greases + weapon-buff spells are the Armament category and single-select
+   (one at a time); a Spell Buff input drives the scaling spells.
+   Out of scope: on-hit ramps; charged/skill/move-specific talismans;
+   spell-scaling buffs; Black Flame Blade's %-HP DoT.
 6. ✅ **Inventory + UX** — owned-items inventory (searchable multi-select by
    base weapon via `listBaseWeapons()` + `RankFilter.ownedWeaponBaseNames`;
    owning an infusable base unlocks all its affinities, somber/unique = 1
-   variant); shareable + persisted build state (`src/ui/buildState.ts` →
-   URL hash + localStorage, "Copy share link" + "Reset"); responsive/mobile
-   layout (`@media (max-width: 640px)`). Pickers use internal open-state so
-   they don't collapse on re-render. **Still ⏳ within the phase:** ranked
-   trade-off insights (score delta from #1, AR-per-point, best-affinity rollup).
+   variant); **upgrade-level selector** (regular +0–25 scale via
+   `resolveUpgradeLevel(weapon, upgrade)`; somber weapons mapped proportionally;
+   per-weapon level shown as `+N` in the tables); shareable + persisted build
+   state (`src/ui/buildState.ts` → URL hash + localStorage, "Copy share link" +
+   "Reset"); responsive/mobile layout. Pickers use internal open-state so they
+   don't collapse on re-render. **Still ⏳ within the phase:** ranked trade-off
+   insights (score delta from #1, AR-per-point, best-affinity rollup).
 7. ⏳ **(Stretch) True DPS** — motion values + target defense. Data not present;
    would need a new source.
 
@@ -91,10 +95,11 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
 ## Resuming next time — suggested first message
 
 > "Resume EldenAR on branch claude/coding-session-werkha. Read HANDOFF.md, run
-> `npm test` to confirm green (89 tests). Phases 1–6 are done. Either finish the
+> `npm test` to confirm green (111 tests). Phases 1–6 are done. Either finish the
 > remaining Phase 6 trade-off insights (score delta from #1, AR-per-point,
-> best-affinity-per-weapon rollup in the results tables), expand the modifier
-> catalogue, or scope Phase 7 (true DPS — needs a new data source)."
+> best-affinity-per-weapon rollup in the results tables), derive the weapon-buff
+> Spell Buff from a chosen catalyst + stats (instead of a manual number), or
+> scope Phase 7 (true DPS — needs a new data source)."
 
 ## Phase 5 notes (done — reference for Phase 6 and beyond)
 
@@ -105,18 +110,15 @@ resource-allocation DP, not the ~185-billion brute force the brief warns about.
   per group, then multiplies group factors). Mutually-exclusive in-game pairs
   share a group (the two Golden Vows; FGMS / Howl of Shabriri); everything else
   gets its own group. Each modifier's `group` is just data.
-- The dataset is **45 entries** (incl. 13 greases), cross-checked against
-  Fextralife (every entry has a `source`), covering everything the model can
-  represent. Values are hand-transcribed (talisman/physick/grease effects are
-  NOT in the regulation JSON).
+- The dataset is **50 entries** (incl. 13 greases + 5 weapon-buff spells),
+  cross-checked against Fextralife (every entry has a `source`). Values are
+  hand-transcribed (talisman/physick/grease/spell effects are NOT in the
+  regulation JSON).
 - Known v1 simplifications to revisit: flat stat bonuses are clamped to 99 (the
-  curves are only evaluated to 148 = two-handed 99); spell-scaling buffs are not
-  applied (only `attackPower`); the optimizer computes requirement minimums on
-  raw requirements (conservative). **To go further** the remaining gap is
-  weapon-buff *spells* (Scholar's Armament, Bloodflame Blade, Electrify Armament,
-  Order's Blade): their elemental add scales with the catalyst's spell/incant
-  scaling, so it'd need a scaling-aware effect (not a constant). The grease
-  flat-add path (`applyFlatDamage`) is the natural place to extend. Also still
-  out: on-hit ramps and charged/skill/move-specific talismans. The calculator
-  doesn't enforce that greases need a physical-affinity weapon (documented in
-  `modifiers-data.ts`).
+  curves are only evaluated to 148 = two-handed 99); spell-scaling (catalyst)
+  buffs use a single user-supplied Spell Buff number rather than deriving it from
+  a chosen catalyst + stats; the optimizer computes requirement minimums on raw
+  requirements (conservative). Still out: on-hit ramps, charged/skill/
+  move-specific talismans, Black Flame Blade's %-HP DoT. The calculator doesn't
+  enforce that greases/weapon-buff spells need a physical-affinity weapon
+  (documented in `modifiers-data.ts`).
