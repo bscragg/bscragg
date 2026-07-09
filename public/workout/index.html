@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1115" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>" />
+<title>Gym Tracker</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #1a1e26;
+    --card2: #232833;
+    --text: #e8eaf0;
+    --muted: #9aa3b2;
+    --accent: #4ade80;
+    --accent-dim: #1d3a2a;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --border: #2c3340;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    height: 100%; overscroll-behavior: none; }
+  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .screen { display: none; max-width: 560px; margin: 0 auto; padding: 12px 14px 40px; }
+  .screen.active { display: block; }
+
+  /* ---------- Home ---------- */
+  .app-title { font-size: 22px; font-weight: 800; margin: 10px 2px 2px; letter-spacing: .3px; }
+  .app-sub { color: var(--muted); font-size: 13px; margin: 0 2px 14px; }
+  .today-hint { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 16px; font-size: 14px; line-height: 1.5; }
+  .today-hint b { color: var(--accent); }
+  .today-hint .climb { color: var(--warn); font-weight: 600; }
+  .group-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    margin: 18px 4px 8px; }
+  .routine-btn { display: flex; justify-content: space-between; align-items: center; width: 100%;
+    background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left; }
+  .routine-btn:active { background: var(--card2); }
+  .routine-btn .tag { color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 2px; }
+  .routine-btn .count { color: var(--muted); font-size: 13px; font-weight: 400; white-space: nowrap; margin-left: 10px; }
+  .toolbar-row { display: flex; gap: 8px; margin-top: 22px; }
+  .bar-btn { flex: 1; background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .bar-btn:active { background: var(--card2); }
+
+  /* ---------- Session ---------- */
+  .session-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .back-btn { background: var(--card); border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+  .session-name { font-weight: 700; font-size: 16px; flex: 1; }
+  .position { color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin: 6px 0 10px; flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); border: none; padding: 0; cursor: pointer; }
+  .dot.on { background: var(--accent); }
+  .dot.done { background: var(--accent-dim); }
+
+  .viewport { overflow: hidden; touch-action: pan-y; }
+  .track { display: flex; transition: transform .25s ease; will-change: transform; }
+  .track.dragging { transition: none; }
+  .card { flex: 0 0 100%; min-width: 0; padding: 2px; }
+  .card-inner { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; }
+  .phase { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-dim); border-radius: 6px; padding: 3px 8px; margin-bottom: 8px; }
+  .phase.warmup { color: var(--warn); background: #3a2f14; }
+  .ex-name { font-size: 21px; font-weight: 800; margin: 0 0 4px; }
+  .ex-target { color: var(--accent); font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .ex-desc { color: var(--muted); font-size: 14px; line-height: 1.55; margin-bottom: 10px; }
+  .ex-flag { color: var(--warn); font-size: 13px; line-height: 1.4; margin-bottom: 10px; }
+  .last-time { background: var(--card2); border-radius: 10px; padding: 9px 12px; font-size: 13px;
+    color: var(--muted); margin-bottom: 12px; line-height: 1.45; }
+  .last-time b { color: var(--text); }
+  .prog-up { color: var(--accent); font-weight: 700; }
+  .prog-down { color: var(--danger); font-weight: 700; }
+
+  .timer-box { text-align: center; background: var(--card2); border-radius: 14px; padding: 12px 10px 14px; margin-bottom: 12px; }
+  .timer-display { font-size: 44px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+  .timer-display.running { color: var(--accent); }
+  .timer-display.finished { color: var(--warn); }
+  .timer-presets { display: flex; justify-content: center; gap: 8px; margin: 8px 0 10px; flex-wrap: wrap; }
+  .preset-btn { background: var(--bg); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  .preset-btn.sel { color: var(--accent); border-color: var(--accent); }
+  .timer-controls { display: flex; justify-content: center; gap: 10px; }
+  .timer-btn { border: none; border-radius: 12px; padding: 12px 26px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .timer-btn.start { background: var(--accent); color: #06220f; }
+  .timer-btn.reset { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+  .log-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .log-field { flex: 1; }
+  .log-field label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 4px; }
+  .log-field input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 12px; font-size: 20px; font-weight: 700; text-align: center; }
+  .log-btn { width: 100%; background: var(--accent); color: #06220f; border: none; border-radius: 12px;
+    padding: 14px; font-size: 16px; font-weight: 800; cursor: pointer; }
+  .log-btn:active { opacity: .85; }
+  .today-sets { margin-top: 10px; font-size: 14px; }
+  .today-sets .set-line { display: flex; justify-content: space-between; align-items: center;
+    background: var(--card2); border-radius: 8px; padding: 7px 10px; margin-top: 5px; }
+  .set-x { background: none; border: none; color: var(--danger); font-size: 16px; cursor: pointer; padding: 0 4px; }
+  .nav-row { display: flex; gap: 8px; margin-top: 10px; }
+  .nav-btn { flex: 1; background: var(--card); border: 1px solid var(--border); color: var(--text);
+    border-radius: 12px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .nav-btn:disabled { opacity: .35; }
+  .routine-note { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 10px 4px 0; }
+
+  /* ---------- History ---------- */
+  .hist-summary { background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 14px; font-size: 14px; line-height: 1.5; }
+  details.hist-ex { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    margin-bottom: 8px; overflow: hidden; }
+  details.hist-ex summary { padding: 12px 14px; font-weight: 600; font-size: 15px; cursor: pointer; list-style: none; }
+  details.hist-ex summary::-webkit-details-marker { display: none; }
+  details.hist-ex summary .meta { color: var(--muted); font-size: 12px; font-weight: 400; margin-top: 2px; }
+  .hist-sessions { padding: 0 14px 12px; }
+  .hist-day { border-top: 1px solid var(--border); padding: 8px 0; font-size: 14px; }
+  .hist-day .d { color: var(--muted); font-size: 12px; }
+  .empty { color: var(--muted); text-align: center; padding: 30px 10px; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- ============ HOME ============ -->
+<div class="screen active" id="scr-home">
+  <div class="app-title">🏋️ Gym Tracker</div>
+  <p class="app-sub">Two-month plan · elbow rehab · RP lifting · chest · mobility</p>
+  <div class="today-hint" id="today-hint"></div>
+  <div id="routine-list"></div>
+  <div class="toolbar-row">
+    <button class="bar-btn" onclick="showHistory()">📈 History</button>
+    <button class="bar-btn" onclick="location.href='plan.md'">📄 Full plan</button>
+  </div>
+</div>
+
+<!-- ============ SESSION ============ -->
+<div class="screen" id="scr-session">
+  <div class="session-top">
+    <button class="back-btn" onclick="showHome()">‹ Back</button>
+    <div class="session-name" id="session-name"></div>
+    <div class="position" id="session-pos"></div>
+  </div>
+  <div class="dots" id="dots"></div>
+  <div class="viewport" id="viewport">
+    <div class="track" id="track"></div>
+  </div>
+  <div class="nav-row">
+    <button class="nav-btn" id="prev-btn" onclick="goTo(cur-1)">‹ Prev</button>
+    <button class="nav-btn" id="next-btn" onclick="goTo(cur+1)">Next ›</button>
+  </div>
+  <div class="routine-note" id="routine-note"></div>
+</div>
+
+<!-- ============ HISTORY ============ -->
+<div class="screen" id="scr-history">
+  <div class="session-top">
+    <button class="back-btn" onclick="showHome()">‹ Back</button>
+    <div class="session-name">History</div>
+  </div>
+  <div class="hist-summary" id="hist-summary"></div>
+  <div id="hist-list"></div>
+  <div class="toolbar-row">
+    <button class="bar-btn" onclick="exportLog()">⬇ Export JSON</button>
+    <button class="bar-btn" onclick="document.getElementById('import-file').click()">⬆ Import</button>
+  </div>
+  <input type="file" id="import-file" accept=".json,application/json" style="display:none" onchange="importLog(this)" />
+</div>
+
+<script>
+"use strict";
+
+/* ================================================================
+   ROUTINE DATA — from the Two-Month Integrated Training Plan
+   log types: 'reps' (reps + optional lb), 'time' (logs the hold/work seconds)
+   ================================================================ */
+const ROUTINES = [
+  {
+    id: "elbow-am", name: "Elbow — Morning", tag: "Every day · ~5 min", group: "Daily elbow rehab (non-negotiable)",
+    note: "Mild discomfort ≤3/10 during exercise is fine. Pain lasting 24+ hrs = yesterday was too much — cut volume. Sharp pain = reduce load immediately.",
+    exercises: [
+      { id: "iso-wrist-ext", name: "Isometric Wrist Extension Hold", phase: "Rehab",
+        target: "3 × 45 sec hold · light resistance",
+        desc: "Forearm supported (table or thigh), palm down. Press the back of your hand up against light resistance from the other hand — the wrist doesn't move, you just hold the tension for the full 45 seconds. Rest ~30 sec between holds.",
+        timer: 45, rest: 30, log: "time" },
+      { id: "wrist-ext-stretch-am", name: "Wrist Extensor Stretch", phase: "Rehab",
+        target: "3 × 30 sec",
+        desc: "Arm straight out, palm down. With the other hand, gently pull the hand down and toward you until you feel a stretch along the top of the forearm. Gentle — a stretch, not pain.",
+        timer: 30, rest: 15, log: "time" },
+    ],
+  },
+  {
+    id: "elbow-pm", name: "Elbow — Evening", tag: "Skip on climbing days · ~10 min", group: "Daily elbow rehab (non-negotiable)",
+    note: "Skip this whole block on climbing days (Tue / Fri). Ice afterwards only if aching.",
+    exercises: [
+      { id: "wrist-circles", name: "Wrist Circles + Quick Stretch", phase: "Warm-up",
+        target: "~1 min",
+        desc: "Slow wrist circles both directions, then a brief gentle wrist extensor stretch to warm the tissue before eccentrics.",
+        timer: 60, log: "time" },
+      { id: "eccentrics", name: "Eccentric Wrist Extensions", phase: "Rehab",
+        target: "3 × 15 · 4–5 sec lowers · 1 min rest",
+        desc: "Pick one: dumbbell wrist extension, FlexBar/Tyler Twist, or the no-equipment version. Use the other hand to help lift into wrist extension, then lower slowly on your own over 4–5 seconds. The slow lower IS the exercise.",
+        timer: 60, rest: 60, log: "reps" },
+      { id: "wrist-ext-stretch-pm", name: "Wrist Extensor Stretch", phase: "Rehab",
+        target: "2 × 30 sec",
+        desc: "Arm straight, palm down, gently pull the hand down and toward you. Hold 30 seconds.",
+        timer: 30, rest: 15, log: "time" },
+    ],
+  },
+  {
+    id: "chest-m1", name: "Chest — Month 1 (light)", tag: "Weeks 1–4 · 2–3 short sessions/day", group: "Chest",
+    note: "Month 1 is incline-only on purpose — standard/decline/wide/close pushups, floor press and flys all load the healing tendon. Near-failure, not to failure.",
+    exercises: [
+      { id: "incline-pushup", name: "Incline Pushups (hands on desk)", phase: "Press",
+        target: "Near-failure, not to failure",
+        desc: "Hands on a desk or counter, body in a straight line, lower chest to the edge and press back up. Stop 1–2 reps short of failure. This is the only pushup variant for Month 1.",
+        rest: 60, log: "reps" },
+      { id: "band-rows", name: "Band Rows (if you have a band)", phase: "Pull",
+        target: "1–2 light sets per pushup session",
+        desc: "Anchor a band at chest height, pull elbows back squeezing shoulder blades together, control the return. Skip if no band on hand.",
+        rest: 60, log: "reps", flag: "Rows are grip-heavy — keep these light in Month 1." },
+      { id: "doorway-stretch-c1", name: "Doorway Chest Stretch", phase: "Stretch",
+        target: "30 sec · after pressing",
+        desc: "Forearm on a doorframe, elbow at shoulder height, step through until you feel a stretch across the chest. After the session, not before.",
+        timer: 30, log: "time" },
+      { id: "crossbody-stretch", name: "Cross-Body Shoulder Stretch", phase: "Stretch",
+        target: "30 sec per side",
+        desc: "Pull one arm across your chest with the other, keeping the shoulder down. Hold, then switch sides.",
+        timer: 30, log: "time" },
+    ],
+  },
+  {
+    id: "rp-day1", name: "RP Day 1", tag: "Month 2 · Mon", group: "RP lifting (Month 2)",
+    note: "Progression: start at 5 lb. Clear 30+ reps on any lift → go up next week. Can't hit 5 → go down. Lift A: 30 sec rest between exercises. Lift B: straight through, no rest.",
+    exercises: [
+      { id: "medium-pushups", name: "Medium Pushups", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Standard-width pushups at a controlled tempo. Part of the optional warm-up trio with chair press and upright rows.",
+        rest: 60, log: "reps" },
+      { id: "chair-press", name: "Chair Press", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Seated on a sturdy chair, hands gripping the seat edge beside your hips — press down to lift your body, lower with control.",
+        rest: 60, log: "reps" },
+      { id: "upright-rows", name: "Upright Rows", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Dumbbells in front of thighs, pull straight up along your body to chest height, elbows leading. Lower with control.",
+        rest: 60, log: "reps", flag: "Grip-heavy — watch the elbow against the 24-hour pain rule." },
+      { id: "goblet-squat", name: "Goblet Squats", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "Hold one dumbbell vertically against your chest with both hands. Feet shoulder-width, squat until thighs are at least parallel, chest up, drive back up through your heels.",
+        rest: 30, log: "reps" },
+      { id: "stiff-dl", name: "Stiff-Legged Deadlifts", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "Dumbbells in front of thighs, knees soft. Hinge at the hips pushing them back, lower the weights along your legs until you feel the hamstrings, back flat, then stand up squeezing the glutes.",
+        rest: 30, log: "reps", flag: "High grip demand — one of the likeliest flare triggers. 24-hour pain rule applies." },
+      { id: "sumo-dl", name: "Sumo Deadlifts", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "Wide stance, toes out, one dumbbell held with both hands between your legs. Hips down, chest up, drive through the floor to stand tall.",
+        rest: 30, log: "reps", flag: "High grip demand — watch the elbow." },
+      { id: "alt-curls", name: "Alternating Curls", phase: "Lift B",
+        target: "To failure · no rest, straight into next",
+        desc: "Dumbbell in each hand, curl one arm at a time without swinging, full control on the way down.",
+        log: "reps", flag: "Curls are a top elbow-flare risk. If it flares, drop to pause/eccentric-only curls until pain settles." },
+      { id: "one-arm-rows", name: "One-Arm Rows", phase: "Lift B",
+        target: "To failure · no rest, straight into next",
+        desc: "One hand and knee braced on a bench or chair, back flat. Pull the dumbbell to your hip, elbow close, lower with control. Both sides.",
+        log: "reps", flag: "Rows are grip-heavy — watch the elbow against the 24-hour rule." },
+      { id: "crunch-hold", name: "Crunches with Top Hold", phase: "Lift B",
+        target: "To failure",
+        desc: "Crunch up, pause and squeeze at the top for a beat, lower slowly. Quality over speed.",
+        log: "reps" },
+    ],
+  },
+  {
+    id: "rp-day2", name: "RP Day 2", tag: "Month 2 · Wed", group: "RP lifting (Month 2)",
+    note: "Progression: clear 30+ reps → go up next week; can't hit 5 → go down. Lift A: 30 sec rest between exercises. Lift B: straight through, no rest.",
+    exercises: [
+      { id: "high-bent-rows", name: "High Bent Rows", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Hinge forward, row the dumbbells up high toward the chest with elbows wide. Lower with control.",
+        rest: 60, log: "reps", flag: "Rows are grip-heavy — watch the elbow." },
+      { id: "supinating-curls", name: "Supinating Curls", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Start palms facing in; rotate palms up as you curl. Control the lowering and the rotation back.",
+        rest: 60, log: "reps", flag: "Curls are a top elbow-flare risk — keep honest form." },
+      { id: "paused-side-raises", name: "Paused Side Raises", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Raise dumbbells out to the sides to shoulder height, pause briefly at the top, lower slowly.",
+        rest: 60, log: "reps" },
+      { id: "sumo-squat-rack", name: "Sumo Squats (Shoulder Rack)", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "Dumbbells racked at your shoulders, wide stance with toes out. Squat deep keeping knees tracking over toes, drive back up.",
+        rest: 30, log: "reps" },
+      { id: "sumo-stiff-dl", name: "Sumo Stiff-Legged Deadlifts", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "Wide stance, soft knees. Hinge at the hips with the dumbbell hanging between your legs until the inner hamstrings load up, back flat, stand tall.",
+        rest: 30, log: "reps", flag: "High grip demand — watch the elbow." },
+      { id: "oh-extensions-d2", name: "One-Dumbbell Two-Arm Standing Extensions", phase: "Lift B",
+        target: "To failure · no rest, straight into next",
+        desc: "Hold one dumbbell with both hands overhead. Bend the elbows to lower it behind your head, keeping elbows close to your ears, then extend back up. Lower-risk for the elbow.",
+        log: "reps" },
+      { id: "narrow-pushups", name: "Narrow Pushups", phase: "Lift B",
+        target: "To failure · no rest, straight into next",
+        desc: "Hands inside shoulder width, elbows tucked to your sides, chest to the floor and press back up.",
+        log: "reps" },
+      { id: "reaching-situps-d2", name: "Slow-Down Reaching Situps", phase: "Lift B",
+        target: "To failure",
+        desc: "Sit up reaching your hands toward the ceiling, then lower yourself down slowly over 3–5 seconds. The slow descent is the point.",
+        log: "reps" },
+    ],
+  },
+  {
+    id: "rp-day3", name: "RP Day 3", tag: "Month 2 · Sat", group: "RP lifting (Month 2)",
+    note: "Progression: clear 30+ reps → go up next week; can't hit 5 → go down. Lift A: 30 sec rest between exercises. Lift B: straight through, no rest.",
+    exercises: [
+      { id: "bent-upright-rows", name: "Bent Upright Rows", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Slight forward hinge, pull the dumbbells up along your body, elbows leading. Lower with control.",
+        rest: 60, log: "reps", flag: "Rows are grip-heavy — watch the elbow." },
+      { id: "sumo-squat-rack-wu", name: "Sumo Squats (Shoulder Rack)", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Dumbbells at your shoulders, wide stance, deep squat, drive up.",
+        rest: 60, log: "reps" },
+      { id: "good-mornings", name: "Good-Mornings", phase: "Warm-up (optional)", warmup: true,
+        target: "3 × to failure",
+        desc: "Weight at your chest or shoulders, soft knees, hinge forward at the hips with a flat back until you feel the hamstrings, then stand.",
+        rest: 60, log: "reps" },
+      { id: "elbows-out-rows", name: "Elbows-Out Bent Rows", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "Hinge forward, back flat. Row the dumbbells up with elbows flared out to ~90°, squeezing the upper back and rear delts at the top.",
+        rest: 30, log: "reps", flag: "Rows are grip-heavy — one of the likeliest flare triggers." },
+      { id: "oh-extensions-d3", name: "One-Dumbbell Two-Arm Standing Extensions", phase: "Lift A",
+        target: "To failure · then 30 sec rest",
+        desc: "One dumbbell held overhead with both hands, lower behind the head bending the elbows, extend back up. Elbows stay close to the ears.",
+        rest: 30, log: "reps" },
+      { id: "hammer-curls", name: "Hammer Curls", phase: "Lift B",
+        target: "To failure · no rest, straight into next",
+        desc: "Neutral grip (thumbs up), curl both dumbbells without swinging, slow lowers.",
+        log: "reps", flag: "Curls are a top elbow-flare risk. If it flares, drop to eccentric-only until pain settles." },
+      { id: "fwd-lunges", name: "Forward In-Place Lunges", phase: "Lift B",
+        target: "To failure · no rest, straight into next",
+        desc: "Step forward, lower the back knee toward the floor, push off the front foot back to standing. Alternate legs. Lower-risk for the elbow.",
+        log: "reps" },
+      { id: "reaching-situps-d3", name: "Slow-Down Reaching Situps", phase: "Lift B",
+        target: "To failure",
+        desc: "Sit up reaching toward the ceiling, lower down slowly over 3–5 seconds.",
+        log: "reps" },
+    ],
+  },
+  {
+    id: "chest-m2", name: "Chest — Month 2 (full)", tag: "Weeks 5–8 · 2–3 sessions/day", group: "Chest",
+    note: "Warm up with arm circles / band pull-aparts — stretch AFTER pressing, not before. 48 hrs between chest sessions of matching intensity; light between-meeting sets short of failure don't need the gap. Pull 1–2 sets per 2–3 sets of pressing.",
+    exercises: [
+      { id: "std-pushup", name: "Standard Pushups", phase: "Press",
+        target: "To failure or near it",
+        desc: "Hands shoulder-width, body in one line, chest to the floor and press up.",
+        rest: 60, log: "reps" },
+      { id: "incline-pushup-m2", name: "Incline Pushups", phase: "Press",
+        target: "Easier variant",
+        desc: "Hands elevated on a desk or bench. Good for extra volume or lighter days.",
+        rest: 60, log: "reps" },
+      { id: "decline-pushup", name: "Decline Pushups", phase: "Press",
+        target: "Harder · upper chest",
+        desc: "Feet elevated on a chair or step, hands on the floor. Hits the upper chest harder.",
+        rest: 60, log: "reps" },
+      { id: "wide-pushup", name: "Wide-Grip Pushups", phase: "Press",
+        target: "Chest emphasis",
+        desc: "Hands wider than shoulders, elbows tracking ~45° from the body.",
+        rest: 60, log: "reps" },
+      { id: "close-pushup", name: "Close-Grip Pushups", phase: "Press",
+        target: "Triceps + inner chest",
+        desc: "Hands close together under the chest, elbows tucked.",
+        rest: 60, log: "reps" },
+      { id: "floor-press", name: "Floor Press", phase: "Hypertrophy · 1–2×/week",
+        target: "To failure",
+        desc: "Lying on the floor with dumbbells, press up from elbows touching the floor to lockout. The floor limits shoulder strain.",
+        rest: 60, log: "reps" },
+      { id: "floor-flys", name: "Floor Flys", phase: "Hypertrophy · 1–2×/week",
+        target: "Controlled reps",
+        desc: "Lying on the floor, arms wide with a soft elbow bend, bring the dumbbells together over your chest and lower until upper arms touch the floor.",
+        rest: 60, log: "reps" },
+      { id: "banded-rows-m2", name: "Banded / Towel Rows", phase: "Pull",
+        target: "1–2 sets per 2–3 pressing sets",
+        desc: "Band anchored at chest height (or towel around a pole): pull elbows back, squeeze the shoulder blades, control the return.",
+        rest: 60, log: "reps", flag: "Grip-heavy — watch the elbow." },
+      { id: "reverse-flys", name: "Reverse Flys", phase: "Pull",
+        target: "Balance the pressing",
+        desc: "Hinge forward, arms hanging with light dumbbells, raise them out to the sides squeezing the rear delts.",
+        rest: 60, log: "reps" },
+    ],
+  },
+  {
+    id: "mob-foundation", name: "Mobility — Foundation", tag: "Weeks 1–3 · 30–45s holds · 4–5×/wk", group: "Mobility",
+    note: "15–20 min. Breathe into each hold; no bouncing.",
+    exercises: [
+      { id: "childs-pose", name: "Child's Pose", phase: "Hold",
+        target: "30–45 sec",
+        desc: "Kneel, big toes together, knees wide, sink hips back to heels and reach arms forward, forehead toward the floor.",
+        timer: 40, log: "time" },
+      { id: "9090-hip", name: "90/90 Hip Switch", phase: "Hold",
+        target: "30–45 sec per side",
+        desc: "Sit with front leg bent 90° in front, back leg bent 90° behind. Stay tall over the front shin, then switch sides by rotating the knees.",
+        timer: 40, log: "time" },
+      { id: "fwd-fold", name: "Standing Forward Fold", phase: "Hold",
+        target: "30–45 sec",
+        desc: "Feet hip-width, soft knees, hinge and hang. Let the head and arms be heavy; hamstrings will open with time.",
+        timer: 40, log: "time" },
+      { id: "cat-cow", name: "Cat-Cow", phase: "Flow",
+        target: "30–45 sec of slow reps",
+        desc: "On all fours: inhale, drop the belly and lift the chest (cow); exhale, round the spine and tuck the chin (cat). Slow and segmented.",
+        timer: 40, log: "time" },
+      { id: "thread-needle", name: "Thread the Needle", phase: "Hold",
+        target: "30–45 sec per side",
+        desc: "From all fours, slide one arm under the other, shoulder and ear to the floor, feeling the twist through the upper back. Both sides.",
+        timer: 40, log: "time" },
+      { id: "doorway-stretch-mob", name: "Doorway Chest Stretch", phase: "Hold",
+        target: "30–45 sec",
+        desc: "Forearm on the doorframe, elbow at shoulder height, step through gently.",
+        timer: 40, log: "time" },
+      { id: "calf-stretch", name: "Calf Stretch", phase: "Hold",
+        target: "30–45 sec per side",
+        desc: "Hands on a wall, one leg back with the heel down, lean in until the calf stretches. Both sides.",
+        timer: 40, log: "time" },
+      { id: "neck-half-circles", name: "Neck Half-Circles", phase: "Flow",
+        target: "30–45 sec",
+        desc: "Ear toward one shoulder, roll the chin down across the chest to the other shoulder. Front half only — never roll the head back.",
+        timer: 40, log: "time" },
+    ],
+  },
+  {
+    id: "mob-depth", name: "Mobility — Depth add-ons", tag: "Weeks 4–6 · 45–60s holds", group: "Mobility",
+    note: "Run these AFTER the foundation moves. Do the hip-flexor and hamstring stretches twice per session — they're the slowest to open.",
+    exercises: [
+      { id: "low-lunge", name: "Low Lunge (Hip Flexor)", phase: "Hold · 2× per session",
+        target: "45–60 sec per side",
+        desc: "Back knee down, front foot forward, shift hips forward until the front of the back hip stretches. Squeeze the back glute to deepen. Both sides, twice through.",
+        timer: 50, log: "time" },
+      { id: "seated-fwd-fold", name: "Seated Forward Fold", phase: "Hold · 2× per session",
+        target: "45–60 sec",
+        desc: "Legs long in front, hinge from the hips reaching toward the feet. Long spine first, round second. Twice through.",
+        timer: 50, log: "time" },
+      { id: "puppy-pose", name: "Extended Puppy Pose", phase: "Hold",
+        target: "45–60 sec",
+        desc: "From all fours, walk the hands forward keeping hips over knees, chest melting toward the floor.",
+        timer: 50, log: "time" },
+    ],
+  },
+  {
+    id: "mob-yoga", name: "Mobility — Yoga shapes", tag: "Weeks 7–8 · sessions run 20–25 min", group: "Mobility",
+    note: "Added on top of the earlier work. Go slow into Half Pigeon.",
+    exercises: [
+      { id: "half-pigeon", name: "Half Pigeon", phase: "Hold",
+        target: "45–60 sec per side · go slow",
+        desc: "Front shin angled on the floor, back leg long behind. Square the hips and fold forward only as far as comfortable. Ease into it.",
+        timer: 50, log: "time" },
+      { id: "cobra", name: "Cobra", phase: "Hold",
+        target: "30–45 sec",
+        desc: "Lying face down, hands under shoulders, press the chest up keeping hips on the floor. Elbows soft.",
+        timer: 40, log: "time" },
+      { id: "spinal-twist", name: "Seated Spinal Twist", phase: "Hold",
+        target: "30–45 sec per side",
+        desc: "Seated, one knee crossed over the other leg, twist toward the raised knee using the opposite elbow for leverage. Both sides.",
+        timer: 40, log: "time" },
+      { id: "down-dog", name: "Downward Dog", phase: "Hold",
+        target: "45–60 sec",
+        desc: "Hands and feet on the floor, hips high, heels reaching down, long spine.",
+        timer: 50, log: "time",
+        flag: "Weight-bearing on flat hands puts the wrist in extension — if the elbow is flaring this week, use forearms on a chair instead, or skip it." },
+    ],
+  },
+];
+
+const WEEKDAY_PLAN = [
+  "Sunday — elbow <b>full AM+PM</b> · light pushups (optional) · mobility",
+  "Monday — elbow <b>full AM+PM</b> · pushup sessions · <b>RP Day 1</b> (Month 2) · mobility",
+  "Tuesday — elbow <b>AM only</b> · <span class='climb'>CLIMB #1</span> — skip evening elbow block · light pushups · mobility",
+  "Wednesday — elbow <b>full AM+PM</b> · pushup sessions · <b>RP Day 2</b> (Month 2) · mobility",
+  "Thursday — elbow <b>full AM+PM</b> · pushup sessions · rest from lifting · mobility",
+  "Friday — elbow <b>AM only</b> · <span class='climb'>CLIMB #2</span> — skip evening elbow block · light pushups · mobility optional",
+  "Saturday — elbow <b>full AM+PM</b> · pushup sessions · <b>RP Day 3</b> (Month 2) · mobility",
+];
+
+/* ================================================================
+   STORAGE
+   entries: { t: epoch-ms, r: routineId, e: exerciseId, reps?, lb?, secs? }
+   ================================================================ */
+const KEY = "gymlog-v1";
+function loadLog() {
+  try { const v = JSON.parse(localStorage.getItem(KEY)); return Array.isArray(v) ? v : []; }
+  catch (e) { return []; }
+}
+function saveLog(log) { localStorage.setItem(KEY, JSON.stringify(log)); }
+function addEntry(entry) { const log = loadLog(); log.push(entry); saveLog(log); }
+function removeEntry(t) { saveLog(loadLog().filter(en => en.t !== t)); }
+
+const EX_BY_ID = {};
+const ROUTINE_BY_ID = {};
+ROUTINES.forEach(r => { ROUTINE_BY_ID[r.id] = r; r.exercises.forEach(ex => { EX_BY_ID[ex.id] = ex; }); });
+
+function dayKey(t) { const d = new Date(t); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function fmtDate(t) { return new Date(t).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); }
+function todayKey() { return dayKey(Date.now()); }
+function entriesFor(exId) { return loadLog().filter(en => en.e === exId); }
+function todayEntries(exId) { const tk = todayKey(); return entriesFor(exId).filter(en => dayKey(en.t) === tk); }
+function lastSession(exId) {
+  // Most recent previous day's entries for this exercise (excluding today).
+  const tk = todayKey();
+  const byDay = {};
+  entriesFor(exId).forEach(en => { const k = dayKey(en.t); if (k !== tk) (byDay[k] = byDay[k] || []).push(en); });
+  const days = Object.keys(byDay).sort();
+  if (!days.length) return null;
+  return byDay[days[days.length - 1]];
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+/* ================================================================
+   SCREENS
+   ================================================================ */
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+function showHome() { stopTimer(false); renderHome(); show("scr-home"); }
+function showHistory() { renderHistory(); show("scr-history"); }
+
+/* ---------- Home ---------- */
+function renderHome() {
+  document.getElementById("today-hint").innerHTML =
+    "<b>Today:</b> " + WEEKDAY_PLAN[new Date().getDay()];
+  const groups = [];
+  const byGroup = {};
+  ROUTINES.forEach(r => {
+    if (!byGroup[r.group]) { byGroup[r.group] = []; groups.push(r.group); }
+    byGroup[r.group].push(r);
+  });
+  const tk = todayKey();
+  const log = loadLog();
+  let html = "";
+  groups.forEach(g => {
+    html += `<div class="group-label">${esc(g)}</div>`;
+    byGroup[g].forEach(r => {
+      const done = log.filter(en => en.r === r.id && dayKey(en.t) === tk).length;
+      html += `<button class="routine-btn" onclick="openRoutine('${r.id}')">
+        <span>${esc(r.name)}<div class="tag">${esc(r.tag)}</div></span>
+        <span class="count">${done ? "✅ " + done + " today" : r.exercises.length + " exercises"}</span>
+      </button>`;
+    });
+  });
+  document.getElementById("routine-list").innerHTML = html;
+}
+
+/* ---------- Session / carousel ---------- */
+let activeRoutine = null;
+let cur = 0;
+
+function openRoutine(id) {
+  activeRoutine = ROUTINE_BY_ID[id];
+  cur = 0;
+  document.getElementById("session-name").textContent = activeRoutine.name;
+  document.getElementById("routine-note").textContent = activeRoutine.note || "";
+  renderCards();
+  goTo(0);
+  show("scr-session");
+  requestWakeLock();
+}
+
+function renderCards() {
+  const track = document.getElementById("track");
+  track.innerHTML = activeRoutine.exercises.map((ex, i) => {
+    const hasTimer = ex.timer || ex.rest;
+    const presets = [];
+    if (ex.timer) presets.push({ label: (ex.log === "time" ? "Hold " : "Work ") + ex.timer + "s", secs: ex.timer });
+    if (ex.rest) presets.push({ label: "Rest " + ex.rest + "s", secs: ex.rest });
+    const initial = presets.length ? presets[0].secs : 60;
+    return `<div class="card" data-i="${i}"><div class="card-inner">
+      <span class="phase ${ex.warmup ? "warmup" : ""}">${esc(ex.phase)}</span>
+      <h2 class="ex-name">${esc(ex.name)}</h2>
+      <div class="ex-target">${esc(ex.target)}</div>
+      <p class="ex-desc">${esc(ex.desc)}</p>
+      ${ex.flag ? `<div class="ex-flag">⚠️ ${esc(ex.flag)}</div>` : ""}
+      <div class="last-time" id="last-${i}"></div>
+      ${hasTimer || true ? `
+      <div class="timer-box">
+        <div class="timer-display" id="tdisp-${i}" data-preset="${initial}">${fmtSecs(initial)}</div>
+        <div class="timer-presets">
+          ${presets.map(p => `<button class="preset-btn" onclick="setPreset(${i}, ${p.secs}, this)">${esc(p.label)}</button>`).join("")}
+          ${!presets.length ? `<button class="preset-btn" onclick="setPreset(${i}, 30, this)">Rest 30s</button>
+             <button class="preset-btn" onclick="setPreset(${i}, 60, this)">Rest 60s</button>` : ""}
+        </div>
+        <div class="timer-controls">
+          <button class="timer-btn start" id="tstart-${i}" onclick="toggleTimer(${i})">Start</button>
+          <button class="timer-btn reset" onclick="resetTimer(${i})">Reset</button>
+        </div>
+      </div>` : ""}
+      <div class="log-row">
+        ${ex.log === "time"
+          ? `<div class="log-field"><label>Seconds held</label><input type="number" inputmode="numeric" id="secs-${i}" value="${ex.timer || 30}"></div>`
+          : `<div class="log-field"><label>Reps</label><input type="number" inputmode="numeric" id="reps-${i}" placeholder="0"></div>
+             <div class="log-field"><label>Weight (lb)</label><input type="number" inputmode="decimal" id="lb-${i}" placeholder="—"></div>`}
+      </div>
+      <button class="log-btn" onclick="logSet(${i})">✓ Log set</button>
+      <div class="today-sets" id="today-${i}"></div>
+    </div></div>`;
+  }).join("");
+  renderDots();
+  activeRoutine.exercises.forEach((_, i) => { refreshLast(i); refreshToday(i); });
+}
+
+function renderDots() {
+  document.getElementById("dots").innerHTML = activeRoutine.exercises.map((ex, i) => {
+    const done = todayEntries(ex.id).length > 0;
+    return `<button class="dot ${i === cur ? "on" : done ? "done" : ""}" onclick="goTo(${i})" aria-label="Exercise ${i + 1}"></button>`;
+  }).join("");
+  document.getElementById("session-pos").textContent = (cur + 1) + " / " + activeRoutine.exercises.length;
+  document.getElementById("prev-btn").disabled = cur === 0;
+  document.getElementById("next-btn").disabled = cur === activeRoutine.exercises.length - 1;
+}
+
+function goTo(i) {
+  if (!activeRoutine) return;
+  cur = Math.max(0, Math.min(activeRoutine.exercises.length - 1, i));
+  const track = document.getElementById("track");
+  track.classList.remove("dragging");
+  track.style.transform = `translateX(-${cur * 100}%)`;
+  renderDots();
+}
+
+/* Swipe */
+(function () {
+  const vp = document.getElementById("viewport");
+  let startX = null, startY = null, dx = 0, swiping = false;
+  vp.addEventListener("touchstart", e => {
+    if (e.target.closest("input, button")) return;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY; dx = 0; swiping = false;
+  }, { passive: true });
+  vp.addEventListener("touchmove", e => {
+    if (startX === null) return;
+    dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!swiping && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) swiping = true;
+    if (swiping) {
+      const track = document.getElementById("track");
+      track.classList.add("dragging");
+      track.style.transform = `translateX(calc(-${cur * 100}% + ${dx}px))`;
+    }
+  }, { passive: true });
+  vp.addEventListener("touchend", () => {
+    if (startX === null) return;
+    if (swiping && Math.abs(dx) > 60) goTo(cur + (dx < 0 ? 1 : -1));
+    else goTo(cur);
+    startX = null;
+  });
+})();
+
+/* ---------- Last-session + today panels ---------- */
+function refreshLast(i) {
+  const ex = activeRoutine.exercises[i];
+  const el = document.getElementById("last-" + i);
+  const last = lastSession(ex.id);
+  if (!last) { el.innerHTML = "First time — no history yet. Log a set to start tracking."; return; }
+  const date = fmtDate(last[0].t);
+  let line, hint = "";
+  if (ex.log === "time") {
+    line = last.map(en => (en.secs || 0) + "s").join(", ");
+  } else {
+    line = last.map(en => en.reps).join(", ") + " reps";
+    const lbs = [...new Set(last.map(en => en.lb).filter(v => v != null && v !== ""))];
+    if (lbs.length) line += " @ " + lbs.join("/") + " lb";
+    const best = Math.max(...last.map(en => en.reps || 0));
+    if (ex.rest === 30 || ex.phase.startsWith("Lift") || ex.warmup) {
+      if (best >= 30) hint = ` <span class="prog-up">▲ Cleared 30+ — go up in weight this week.</span>`;
+      else if (best < 5) hint = ` <span class="prog-down">▼ Under 5 reps — go down in weight.</span>`;
+    }
+  }
+  el.innerHTML = `<b>Last (${esc(date)}):</b> ${esc(line)}${hint}`;
+}
+
+function refreshToday(i) {
+  const ex = activeRoutine.exercises[i];
+  const el = document.getElementById("today-" + i);
+  const sets = todayEntries(ex.id);
+  el.innerHTML = sets.map((en, n) => {
+    const what = ex.log === "time"
+      ? (en.secs || 0) + " sec"
+      : en.reps + " reps" + (en.lb != null && en.lb !== "" ? " @ " + en.lb + " lb" : "");
+    return `<div class="set-line"><span>Set ${n + 1} · ${esc(what)}</span>
+      <button class="set-x" onclick="deleteSet(${en.t}, ${i})" aria-label="Delete set">✕</button></div>`;
+  }).join("");
+}
+
+function logSet(i) {
+  const ex = activeRoutine.exercises[i];
+  const entry = { t: Date.now(), r: activeRoutine.id, e: ex.id };
+  if (ex.log === "time") {
+    const secs = parseInt(document.getElementById("secs-" + i).value, 10);
+    if (!secs || secs <= 0) return;
+    entry.secs = secs;
+  } else {
+    const reps = parseInt(document.getElementById("reps-" + i).value, 10);
+    if (!reps || reps <= 0) return;
+    entry.reps = reps;
+    const lb = document.getElementById("lb-" + i).value;
+    if (lb !== "") entry.lb = parseFloat(lb);
+  }
+  addEntry(entry);
+  refreshToday(i);
+  renderDots();
+  if (navigator.vibrate) navigator.vibrate(30);
+  // Auto-start the rest timer after logging a lift set.
+  if (ex.rest && ex.log !== "time") { setTimerTo(i, ex.rest); startTimer(i); }
+}
+
+function deleteSet(t, i) { removeEntry(t); refreshToday(i); renderDots(); }
+
+/* ---------- Timer ---------- */
+let timer = { card: null, remaining: 0, running: false, iv: null };
+function fmtSecs(s) { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+
+function disp(i) { return document.getElementById("tdisp-" + i); }
+function startBtn(i) { return document.getElementById("tstart-" + i); }
+
+function setPreset(i, secs, btn) {
+  stopTimerIfOther(i);
+  setTimerTo(i, secs);
+  if (btn) {
+    btn.closest(".timer-presets").querySelectorAll(".preset-btn").forEach(b => b.classList.remove("sel"));
+    btn.classList.add("sel");
+  }
+}
+function setTimerTo(i, secs) {
+  stopTimerIfOther(i);
+  clearInterval(timer.iv);
+  timer = { card: i, remaining: secs, running: false, iv: null };
+  const d = disp(i);
+  d.dataset.preset = secs;
+  d.textContent = fmtSecs(secs);
+  d.classList.remove("running", "finished");
+  if (startBtn(i)) startBtn(i).textContent = "Start";
+}
+function stopTimerIfOther(i) {
+  if (timer.card !== null && timer.card !== i) stopTimer(false);
+}
+function toggleTimer(i) {
+  if (timer.card !== i) setTimerTo(i, parseInt(disp(i).dataset.preset, 10) || 60);
+  if (timer.running) pauseTimer(); else startTimer(i);
+}
+function startTimer(i) {
+  stopTimerIfOther(i);
+  if (timer.card !== i || timer.remaining <= 0) timer = { card: i, remaining: parseInt(disp(i).dataset.preset, 10) || 60, running: false, iv: null };
+  timer.running = true;
+  startBtn(i).textContent = "Pause";
+  disp(i).classList.add("running");
+  disp(i).classList.remove("finished");
+  const endAt = Date.now() + timer.remaining * 1000;
+  clearInterval(timer.iv);
+  timer.iv = setInterval(() => {
+    timer.remaining = (endAt - Date.now()) / 1000;
+    if (timer.remaining <= 0) { timerDone(i); return; }
+    disp(i).textContent = fmtSecs(timer.remaining);
+  }, 200);
+}
+function pauseTimer() {
+  timer.running = false;
+  clearInterval(timer.iv);
+  const i = timer.card;
+  if (i !== null && startBtn(i)) { startBtn(i).textContent = "Resume"; disp(i).classList.remove("running"); }
+}
+function resetTimer(i) { setTimerTo(i, parseInt(disp(i).dataset.preset, 10) || 60); }
+function stopTimer(fireDone) {
+  clearInterval(timer.iv);
+  const i = timer.card;
+  timer = { card: null, remaining: 0, running: false, iv: null };
+  if (i !== null && disp(i)) {
+    disp(i).classList.remove("running");
+    if (!fireDone) { disp(i).textContent = fmtSecs(parseInt(disp(i).dataset.preset, 10) || 60); if (startBtn(i)) startBtn(i).textContent = "Start"; }
+  }
+}
+function timerDone(i) {
+  clearInterval(timer.iv);
+  timer = { card: null, remaining: 0, running: false, iv: null };
+  disp(i).textContent = "0:00";
+  disp(i).classList.remove("running");
+  disp(i).classList.add("finished");
+  startBtn(i).textContent = "Start";
+  if (navigator.vibrate) navigator.vibrate([250, 100, 250]);
+  beep();
+}
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach(t => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880; g.gain.setValueAtTime(0.25, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.22);
+    });
+  } catch (e) { /* audio unavailable */ }
+}
+
+/* Keep the screen awake during a session (best-effort). */
+let wakeLock = null;
+async function requestWakeLock() {
+  try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) { /* denied */ }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && document.getElementById("scr-session").classList.contains("active")) requestWakeLock();
+});
+
+/* ---------- History ---------- */
+function renderHistory() {
+  const log = loadLog();
+  const weekAgo = Date.now() - 7 * 86400000;
+  const weekEntries = log.filter(en => en.t >= weekAgo);
+  const weekDays = new Set(weekEntries.map(en => dayKey(en.t)));
+  document.getElementById("hist-summary").innerHTML =
+    `<b>Last 7 days:</b> ${weekEntries.length} sets across ${weekDays.size} day${weekDays.size === 1 ? "" : "s"} · ${log.length} sets logged all-time`;
+
+  // Group by exercise, most recently trained first.
+  const byEx = {};
+  log.forEach(en => { (byEx[en.e] = byEx[en.e] || []).push(en); });
+  const exIds = Object.keys(byEx).sort((a, b) => byEx[b][byEx[b].length - 1].t - byEx[a][byEx[a].length - 1].t);
+
+  if (!exIds.length) {
+    document.getElementById("hist-list").innerHTML = `<div class="empty">Nothing logged yet. Open a routine and log your first set.</div>`;
+    return;
+  }
+  document.getElementById("hist-list").innerHTML = exIds.map(exId => {
+    const ex = EX_BY_ID[exId] || { name: exId, log: "reps" };
+    const entries = byEx[exId];
+    const byDay = {};
+    entries.forEach(en => { (byDay[dayKey(en.t)] = byDay[dayKey(en.t)] || []).push(en); });
+    const days = Object.keys(byDay).sort().reverse();
+    const routine = ROUTINE_BY_ID[entries[entries.length - 1].r];
+    const sessionsHtml = days.map(d => {
+      const sets = byDay[d];
+      const line = ex.log === "time"
+        ? sets.map(en => (en.secs || 0) + "s").join(", ")
+        : sets.map(en => en.reps + (en.lb != null && en.lb !== "" ? "×" + en.lb + "lb" : "")).join(", ");
+      return `<div class="hist-day"><div class="d">${esc(fmtDate(sets[0].t))} · ${sets.length} set${sets.length === 1 ? "" : "s"}</div>${esc(line)}</div>`;
+    }).join("");
+    return `<details class="hist-ex"><summary>${esc(ex.name)}
+      <div class="meta">${routine ? esc(routine.name) + " · " : ""}${days.length} session${days.length === 1 ? "" : "s"} · last ${esc(fmtDate(entries[entries.length - 1].t))}</div>
+    </summary><div class="hist-sessions">${sessionsHtml}</div></details>`;
+  }).join("");
+}
+
+function exportLog() {
+  const blob = new Blob([JSON.stringify(loadLog(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "gym-log-" + todayKey() + ".json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importLog(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const incoming = JSON.parse(reader.result);
+      if (!Array.isArray(incoming)) throw new Error("not an array");
+      const log = loadLog();
+      const seen = new Set(log.map(en => en.t + "|" + en.e));
+      let added = 0;
+      incoming.forEach(en => {
+        if (en && typeof en.t === "number" && en.e && !seen.has(en.t + "|" + en.e)) { log.push(en); added++; }
+      });
+      log.sort((a, b) => a.t - b.t);
+      saveLog(log);
+      renderHistory();
+      alert("Imported " + added + " new sets.");
+    } catch (e) { alert("Couldn't read that file — expected a JSON export from this app."); }
+  };
+  reader.readAsText(file);
+  input.value = "";
+}
+
+renderHome();
+</script>
+</body>
+</html>
