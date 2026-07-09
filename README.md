@@ -4,6 +4,7 @@
 > zero-dependency gym workout tracker for the two-month training plan
 > (swipeable exercise cards, timers, rep logging, localStorage history).
 > It's served at `/workout/` in dev and in the deployed Pages build.
+> Docs + session on-ramp: [HANDOFF-WORKOUT.md](./HANDOFF-WORKOUT.md).
 
 A web app that helps Elden Ring players maximize their **Attack Rating (AR)** for
 a given build: which weapon + affinity + upgrade level to use, how to distribute
